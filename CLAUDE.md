@@ -82,6 +82,91 @@
 
 ---
 
+## 開発・デプロイフロー
+
+### 毎回の開発フロー（忘れないこと）
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    開発・確認・デプロイフロー                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. ローカル開発                                             │
+│     cd app && npm run dev                                   │
+│     → http://localhost:5173 で確認                          │
+│                                                             │
+│  2. ビルド確認                                               │
+│     npm run build                                           │
+│     → エラーがないことを確認                                  │
+│                                                             │
+│  3. 本番プレビュー（ローカル）                                │
+│     npm run preview                                         │
+│     → http://localhost:4173 で本番相当の動作確認             │
+│                                                             │
+│  4. デプロイ（プレビュー版）                                  │
+│     npm run deploy                                          │
+│     → 一意のURLが発行される（リンク限定公開）                 │
+│     → 例: https://app-xxxx-username.vercel.app              │
+│                                                             │
+│  5. デプロイ（本番版）※必要な場合のみ                        │
+│     npm run deploy:prod                                     │
+│     → 固定URLにデプロイ                                      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### コマンド早見表
+
+| 目的 | コマンド | 結果 |
+|------|----------|------|
+| 開発サーバー起動 | `npm run dev` | http://localhost:5173 |
+| ビルド | `npm run build` | dist/ に出力 |
+| ビルド結果プレビュー | `npm run preview` | http://localhost:4173 |
+| プレビューデプロイ | `npm run deploy` | 一意URL発行（限定公開） |
+| 本番デプロイ | `npm run deploy:prod` | 固定URL更新 |
+
+### Vercel初回セットアップ（1回だけ）
+
+```bash
+cd app
+npx vercel login
+# ブラウザが開くのでログイン（GitHub/GitLab/Email）
+```
+
+### デプロイURL仕様
+
+- **プレビュー版**: `https://app-[ランダム文字列]-[username].vercel.app`
+  - 毎回異なるURL
+  - 検索エンジンに登録されない（robots.txt + noindex）
+  - リンクを知っている人のみアクセス可能
+
+- **本番版**: `https://[project-name].vercel.app`
+  - 固定URL
+  - `deploy:prod` で更新
+
+### iPhoneでの確認フロー
+
+```
+1. npm run deploy でデプロイ
+2. 表示されたURLをコピー
+3. iPhoneのSafariでURLを開く
+4. 共有 → ホーム画面に追加
+5. ホーム画面からアプリとして起動
+6. 更新時は再度 npm run deploy → Safariでアクセス
+```
+
+### 更新時の手順
+
+```bash
+# コード変更後
+npm run build          # ビルド確認
+npm run preview        # ローカルで本番相当の動作確認
+npm run deploy         # プレビューデプロイ
+# → 発行されたURLでiPhoneから確認
+```
+
+---
+
 ## 適用タイミング
 
 - コード実装後の説明時
