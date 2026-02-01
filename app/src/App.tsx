@@ -1,121 +1,161 @@
-// ===== メインアプリケーションコンポーネント =====
-
-import { useCallback } from 'react';
-import { useSettings, useData } from './hooks';
-import {
-  NetworkStatus,
-  NetworkBadge,
-  Counter,
-  MemoInput,
-  DataList
-} from './components';
-
+// ===== 画面分割アプリ =====
+import { useState, useRef, useEffect } from 'react';
 import './styles/global.css';
-import './styles/components.css';
+import './styles/split.css';
 
-export default function App() {
-  const { settings, updateSettings } = useSettings();
-  const { items, loading, create, remove, clearAll } = useData();
+function App() {
+  // 分割比率（上側の割合、0.15〜0.85）
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // カウンター更新
-  const handleCounterChange = useCallback((value: number) => {
-    updateSettings({ counter: value });
-  }, [updateSettings]);
+  // URL入力状態
+  const [topUrl, setTopUrl] = useState('');
+  const [bottomUrl, setBottomUrl] = useState('');
+  const [topLoadedUrl, setTopLoadedUrl] = useState('');
+  const [bottomLoadedUrl, setBottomLoadedUrl] = useState('');
 
-  // メモ更新
-  const handleMemoChange = useCallback((value: string) => {
-    updateSettings({ memo: value });
-  }, [updateSettings]);
+  // ドラッグ処理
+  useEffect(() => {
+    const handleMove = (clientY: number) => {
+      if (!isDragging || !containerRef.current) return;
 
-  // 保存
-  const handleSave = useCallback(async () => {
-    const memo = settings.memo.trim();
-    if (!memo) {
-      alert('メモを入力してください');
-      return;
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
+
+      // 比率を計算（0.15〜0.85の範囲に制限）
+      let ratio = (clientY - rect.top) / rect.height;
+      ratio = Math.max(0.15, Math.min(0.85, ratio));
+
+      setSplitRatio(ratio);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientY);
+      }
+    };
+
+    const handleEnd = () => setIsDragging(false);
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchend', handleEnd);
     }
 
-    const success = await create(memo, settings.counter);
-    if (success) {
-      updateSettings({ memo: '' });
-      alert('保存しました');
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDragging]);
+
+  // URL読み込み
+  const loadUrl = (url: string, target: 'top' | 'bottom') => {
+    if (!url.trim()) return;
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+    if (target === 'top') {
+      setTopLoadedUrl(fullUrl);
+    } else {
+      setBottomLoadedUrl(fullUrl);
     }
-  }, [settings.memo, settings.counter, create, updateSettings]);
+  };
 
-  // 全削除
-  const handleClearAll = useCallback(async () => {
-    if (!confirm('すべてのデータを消去しますか？')) return;
-
-    const success = await clearAll();
-    if (success) {
-      updateSettings({ counter: 0, memo: '' });
-      alert('データを消去しました');
+  // URLクリア
+  const clearUrl = (target: 'top' | 'bottom') => {
+    if (target === 'top') {
+      setTopLoadedUrl('');
+      setTopUrl('');
+    } else {
+      setBottomLoadedUrl('');
+      setBottomUrl('');
     }
-  }, [clearAll, updateSettings]);
-
-  // 個別削除
-  const handleDelete = useCallback(async (id: string) => {
-    await remove(id);
-  }, [remove]);
+  };
 
   return (
-    <>
-      {/* オフライン表示 */}
-      <NetworkStatus />
-
-      <div className="app-container">
-        {/* ヘッダー */}
-        <header className="app-header">
-          Tool
-        </header>
-
-        {/* メインコンテンツ */}
-        <main className="app-content">
-          {/* ステータスカード */}
-          <div className="card">
-            <div className="card-title">ステータス</div>
-            <div className="card-content flex-between">
-              <span>ネットワーク</span>
-              <NetworkBadge />
-            </div>
+    <div className="split-container" ref={containerRef}>
+      {/* 上側パネル */}
+      <div
+        className="split-panel"
+        style={{ height: `calc(${splitRatio * 100}% - 12px)` }}
+      >
+        {topLoadedUrl ? (
+          <>
+            <iframe
+              src={topLoadedUrl}
+              className="panel-iframe"
+              title="上側"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+            <button className="close-btn" onClick={() => clearUrl('top')}>
+              ×
+            </button>
+          </>
+        ) : (
+          <div className="panel-empty">
+            <input
+              type="text"
+              className="url-input"
+              placeholder="URL（例: google.com）"
+              value={topUrl}
+              onChange={(e) => setTopUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && loadUrl(topUrl, 'top')}
+            />
+            <button className="open-btn" onClick={() => loadUrl(topUrl, 'top')}>
+              開く
+            </button>
           </div>
-
-          {/* カウンター */}
-          <Counter
-            value={settings.counter}
-            onChange={handleCounterChange}
-          />
-
-          {/* メモ入力 */}
-          <MemoInput
-            value={settings.memo}
-            onChange={handleMemoChange}
-          />
-
-          {/* データ一覧 */}
-          <DataList
-            items={items}
-            loading={loading}
-            onDelete={handleDelete}
-          />
-        </main>
-
-        {/* フッター */}
-        <footer className="app-footer">
-          <button
-            className="btn btn-secondary"
-            onClick={handleClearAll}
-          >
-            データ消去
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleSave}
-          >
-            保存
-          </button>
-        </footer>
+        )}
       </div>
-    </>
+
+      {/* 分割バー */}
+      <div
+        className={`split-divider ${isDragging ? 'active' : ''}`}
+        onMouseDown={() => setIsDragging(true)}
+        onTouchStart={() => setIsDragging(true)}
+      >
+        <div className="divider-handle" />
+      </div>
+
+      {/* 下側パネル */}
+      <div
+        className="split-panel"
+        style={{ height: `calc(${(1 - splitRatio) * 100}% - 12px)` }}
+      >
+        {bottomLoadedUrl ? (
+          <>
+            <iframe
+              src={bottomLoadedUrl}
+              className="panel-iframe"
+              title="下側"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+            <button className="close-btn" onClick={() => clearUrl('bottom')}>
+              ×
+            </button>
+          </>
+        ) : (
+          <div className="panel-empty">
+            <input
+              type="text"
+              className="url-input"
+              placeholder="URL（例: youtube.com）"
+              value={bottomUrl}
+              onChange={(e) => setBottomUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && loadUrl(bottomUrl, 'bottom')}
+            />
+            <button className="open-btn" onClick={() => loadUrl(bottomUrl, 'bottom')}>
+              開く
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
+
+export default App;
