@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+
+  <!-- PWA設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tool">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- アイコン（SVG data URI） -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23007aff' width='180' height='180' rx='40'/><text x='90' y='115' font-size='80' text-anchor='middle' fill='white' font-family='system-ui'>T</text></svg>">
+
+  <title>Tool</title>
+
+  <style>
+    /* ===== リセット・基本設定 ===== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+
+      /* Safe Area対応 */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+
+      /* タッチ最適化 */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ===== カラーテーマ（ダークモード対応） ===== */
+    :root {
+      color-scheme: light dark;
+
+      --bg-primary: #ffffff;
+      --bg-secondary: #f2f2f7;
+      --bg-tertiary: #e5e5ea;
+      --text-primary: #000000;
+      --text-secondary: #666666;
+      --accent: #007aff;
+      --border: rgba(0, 0, 0, 0.1);
+      --success: #34c759;
+      --warning: #ff9500;
+      --error: #ff3b30;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #000000;
+        --bg-secondary: #1c1c1e;
+        --bg-tertiary: #2c2c2e;
+        --text-primary: #ffffff;
+        --text-secondary: #999999;
+        --accent: #0a84ff;
+        --border: rgba(255, 255, 255, 0.1);
+        --success: #30d158;
+        --warning: #ff9f0a;
+        --error: #ff453a;
+      }
+    }
+
+    /* ===== レイアウト ===== */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 430px;
+      margin: 0 auto;
+    }
+
+    .app-header {
+      flex-shrink: 0;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 17px;
+    }
+
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--bg-primary);
+    }
+
+    .app-footer {
+      flex-shrink: 0;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+    }
+
+    /* ===== ネットワークステータス ===== */
+    .network-status {
+      position: fixed;
+      top: env(safe-area-inset-top);
+      left: 0;
+      right: 0;
+      background: var(--error);
+      color: white;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 9999;
+      transform: translateY(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    .network-status.visible {
+      transform: translateY(0);
+    }
+
+    /* ===== UIコンポーネント ===== */
+    .btn {
+      flex: 1;
+      min-height: 44px;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:active {
+      opacity: 0.7;
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .card-content {
+      font-size: 15px;
+      color: var(--text-primary);
+    }
+
+    .input-field {
+      width: 100%;
+      min-height: 44px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .list-item:last-child {
+      border-bottom: none;
+    }
+
+    /* ===== ステータス表示 ===== */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.online {
+      background: rgba(52, 199, 89, 0.15);
+      color: var(--success);
+    }
+
+    .status-badge.offline {
+      background: rgba(255, 59, 48, 0.15);
+      color: var(--error);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* ===== デモコンテンツ ===== */
+    .demo-section {
+      margin-bottom: 24px;
+    }
+
+    .demo-section h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .counter-display {
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      padding: 24px;
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      margin-bottom: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .counter-buttons {
+      display: flex;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+  <!-- ネットワークステータス -->
+  <div id="network-status" class="network-status">オフライン</div>
+
+  <div class="app-container">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      Tool
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="app-content">
+      <!-- ステータスカード -->
+      <div class="card">
+        <div class="card-title">ステータス</div>
+        <div class="card-content">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>ネットワーク</span>
+            <span id="network-badge" class="status-badge online">
+              <span class="status-dot"></span>
+              <span id="network-text">オンライン</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- カウンターデモ -->
+      <div class="demo-section">
+        <h2>カウンター</h2>
+        <div id="counter-display" class="counter-display">0</div>
+        <div class="counter-buttons">
+          <button class="btn btn-secondary" id="btn-decrement">-1</button>
+          <button class="btn btn-secondary" id="btn-reset">リセット</button>
+          <button class="btn btn-primary" id="btn-increment">+1</button>
+        </div>
+      </div>
+
+      <!-- メモデモ -->
+      <div class="demo-section">
+        <h2>メモ</h2>
+        <textarea id="memo-input" class="input-field" rows="4" placeholder="メモを入力..."></textarea>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+          入力内容は自動保存されます
+        </p>
+      </div>
+
+      <!-- データ一覧 -->
+      <div class="demo-section">
+        <h2>保存データ</h2>
+        <div class="card">
+          <div id="data-list">
+            <div class="list-item">
+              <span style="color: var(--text-secondary);">データがありません</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- フッター -->
+    <footer class="app-footer">
+      <button class="btn btn-secondary" id="btn-clear">データ消去</button>
+      <button class="btn btn-primary" id="btn-save">保存</button>
+    </footer>
+  </div>
+
+  <script>
+    // ===== ストレージヘルパー =====
+    const storage = {
+      save(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+          return true;
+        } catch (e) {
+          console.error('Storage save error:', e);
+          return false;
+        }
+      },
+
+      load(key, defaultValue = null) {
+        try {
+          const stored = localStorage.getItem(key);
+          return stored ? JSON.parse(stored) : defaultValue;
+        } catch (e) {
+          console.error('Storage load error:', e);
+          return defaultValue;
+        }
+      },
+
+      remove(key) {
+        try {
+          localStorage.removeItem(key);
+          return true;
+        } catch (e) {
+          console.error('Storage remove error:', e);
+          return false;
+        }
+      },
+
+      clear() {
+        try {
+          localStorage.clear();
+          return true;
+        } catch (e) {
+          console.error('Storage clear error:', e);
+          return false;
+        }
+      }
+    };
+
+    // ===== IndexedDB ヘルパー =====
+    class SimpleDB {
+      constructor(name = 'ToolDB') {
+        this.name = name;
+        this.db = null;
+      }
+
+      async open() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(this.name, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('data')) {
+              db.createObjectStore('data', { keyPath: 'id' });
+            }
+          };
+          req.onsuccess = (e) => {
+            this.db = e.target.result;
+            resolve(this.db);
+          };
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async put(item) {
+        if (!this.db) await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = this.db.transaction('data', 'readwrite');
+          const req = tx.objectStore('data').put(item);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async get(id) {
+        if (!this.db) await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = this.db.transaction('data', 'readonly');
+          const req = tx.objectStore('data').get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async getAll() {
+        if (!this.db) await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = this.db.transaction('data', 'readonly');
+          const req = tx.objectStore('data').getAll();
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async delete(id) {
+        if (!this.db) await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = this.db.transaction('data', 'readwrite');
+          const req = tx.objectStore('data').delete(id);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async clear() {
+        if (!this.db) await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = this.db.transaction('data', 'readwrite');
+          const req = tx.objectStore('data').clear();
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+    }
+
+    // ===== ネットワーク管理 =====
+    const network = {
+      isOnline: navigator.onLine,
+
+      init() {
+        window.addEventListener('online', () => this.update(true));
+        window.addEventListener('offline', () => this.update(false));
+        this.updateUI();
+      },
+
+      update(online) {
+        this.isOnline = online;
+        this.updateUI();
+      },
+
+      updateUI() {
+        const statusBar = document.getElementById('network-status');
+        const badge = document.getElementById('network-badge');
+        const text = document.getElementById('network-text');
+
+        if (this.isOnline) {
+          statusBar.classList.remove('visible');
+          badge.className = 'status-badge online';
+          text.textContent = 'オンライン';
+        } else {
+          statusBar.classList.add('visible');
+          badge.className = 'status-badge offline';
+          text.textContent = 'オフライン';
+        }
+      }
+    };
+
+    // ===== アプリケーション =====
+    const app = {
+      db: new SimpleDB(),
+      counter: 0,
+
+      async init() {
+        // ネットワーク監視開始
+        network.init();
+
+        // IndexedDB初期化
+        await this.db.open();
+
+        // 保存データ読み込み
+        this.counter = storage.load('counter', 0);
+        this.updateCounterDisplay();
+
+        const memo = storage.load('memo', '');
+        document.getElementById('memo-input').value = memo;
+
+        // データ一覧更新
+        await this.updateDataList();
+
+        // イベント登録
+        this.setupEvents();
+
+        console.log('App initialized');
+      },
+
+      setupEvents() {
+        // カウンターボタン
+        document.getElementById('btn-increment').addEventListener('click', () => {
+          this.counter++;
+          this.saveCounter();
+        });
+
+        document.getElementById('btn-decrement').addEventListener('click', () => {
+          this.counter--;
+          this.saveCounter();
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+          this.counter = 0;
+          this.saveCounter();
+        });
+
+        // メモ自動保存
+        document.getElementById('memo-input').addEventListener('input', (e) => {
+          storage.save('memo', e.target.value);
+        });
+
+        // フッターボタン
+        document.getElementById('btn-save').addEventListener('click', () => this.saveData());
+        document.getElementById('btn-clear').addEventListener('click', () => this.clearData());
+      },
+
+      saveCounter() {
+        storage.save('counter', this.counter);
+        this.updateCounterDisplay();
+      },
+
+      updateCounterDisplay() {
+        document.getElementById('counter-display').textContent = this.counter;
+      },
+
+      async saveData() {
+        const memo = document.getElementById('memo-input').value;
+        if (!memo.trim()) {
+          alert('メモを入力してください');
+          return;
+        }
+
+        const item = {
+          id: Date.now().toString(),
+          text: memo,
+          counter: this.counter,
+          createdAt: new Date().toISOString()
+        };
+
+        await this.db.put(item);
+        await this.updateDataList();
+
+        // メモをクリア
+        document.getElementById('memo-input').value = '';
+        storage.remove('memo');
+
+        alert('保存しました');
+      },
+
+      async clearData() {
+        if (!confirm('すべてのデータを消去しますか？')) return;
+
+        storage.clear();
+        await this.db.clear();
+
+        this.counter = 0;
+        this.updateCounterDisplay();
+        document.getElementById('memo-input').value = '';
+        await this.updateDataList();
+
+        alert('データを消去しました');
+      },
+
+      async updateDataList() {
+        const list = document.getElementById('data-list');
+        const items = await this.db.getAll();
+
+        if (items.length === 0) {
+          list.innerHTML = `
+            <div class="list-item">
+              <span style="color: var(--text-secondary);">データがありません</span>
+            </div>
+          `;
+          return;
+        }
+
+        // 新しい順にソート
+        items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        list.innerHTML = items.map(item => {
+          const date = new Date(item.createdAt);
+          const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+          return `
+            <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+              <div style="font-size: 14px;">${this.escapeHtml(item.text)}</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">
+                カウンター: ${item.counter} / ${dateStr}
+              </div>
+            </div>
+          `;
+        }).join('');
+      },
+
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    };
+
+    // ===== Service Worker 登録 =====
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.error('Service Worker registration failed:', err));
+    }
+
+    // ===== アプリ起動 =====
+    document.addEventListener('DOMContentLoaded', () => app.init());
+  </script>
+</body>
+</html>
