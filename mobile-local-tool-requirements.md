@@ -2,7 +2,22 @@
 
 ## 概要
 
-iPhone 13〜17 シリーズで動作する、アプリ内ローカル環境ツールの最低限のUI・動作環境要件を定義する。
+iPhone 13〜17 シリーズで、LTE/4G/5G 環境下において**端末標準機能のように動作する**ローカルツールの要件を定義する。
+
+**想定利用**: 開発者個人による利用（App Store公開は想定しない）
+
+### 設計原則
+
+```
+┌───────────────────────────────────────────┐
+│              設計の基本方針               │
+├───────────────────────────────────────────┤
+│  1. オフラインファースト - 完全ローカル動作│
+│  2. 即時起動 - ネイティブ同等の体験       │
+│  3. 最小構成 - 必要な機能のみ実装         │
+│  4. 自己完結 - 外部サービス依存なし       │
+└───────────────────────────────────────────┘
+```
 
 ---
 
@@ -10,250 +25,124 @@ iPhone 13〜17 シリーズで動作する、アプリ内ローカル環境ツ�
 
 ### 1.1 対応端末
 
-| モデル | 画面サイズ (pt) | 解像度 (px) | 特記事項 |
-|-------|---------------|-------------|----------|
-| iPhone 13 mini | 375×812 | 1125×2436 | 5.4インチ |
-| iPhone 13 / 14 | 390×844 | 1170×2532 | 6.1インチ |
-| iPhone 13 Pro / 14 Pro | 393×852 | 1179×2556 | Dynamic Island |
-| iPhone 14 Plus | 428×926 | 1284×2778 | 6.7インチ |
-| iPhone 14 Pro Max | 430×932 | 1290×2796 | Dynamic Island |
-| iPhone 15 / 16 | 393×852 | 1179×2556 | Dynamic Island |
-| iPhone 15 Pro / 16 Pro | 393×852 | 1179×2556 | ProMotion 120Hz |
-| iPhone 15 Pro Max / 16 Pro Max | 430×932 | 1290×2796 | ProMotion 120Hz |
-| iPhone 17（想定） | 393〜430×852〜932 | - | 将来対応 |
+| モデル | 画面サイズ (pt) | 通信規格 |
+|-------|---------------|----------|
+| iPhone 13 mini | 375×812 | 5G/LTE |
+| iPhone 13/14/15/16 | 390〜393×844〜852 | 5G/LTE |
+| iPhone 14/15/16 Pro Max | 430×932 | 5G/LTE |
+| iPhone 17（想定） | 393〜430×852〜932 | 5G |
 
 ### 1.2 画面サイズ範囲
 
 ```
-最小幅: 375pt (iPhone 13 mini)
-標準幅: 393pt (iPhone 15/16)
-最大幅: 430pt (Pro Max)
-
-高さ範囲: 812pt 〜 932pt
+最小幅: 375pt
+標準幅: 393pt
+最大幅: 430pt
 ```
 
-### 1.3 Safe Area 対応
+### 1.3 Safe Area
 
 ```
 ┌─────────────────────────────────┐
-│▓▓▓▓▓▓▓ Dynamic Island ▓▓▓▓▓▓▓│ ← 59pt (14 Pro以降)
+│▓▓▓▓▓▓▓ Dynamic Island ▓▓▓▓▓▓▓│ ← 59pt
 ├─────────────────────────────────┤
-│                                 │
-│                                 │
 │      コンテンツエリア           │
-│                                 │
-│                                 │
 ├─────────────────────────────────┤
 │         Home Indicator          │ ← 34pt
 └─────────────────────────────────┘
-
-/* CSS Safe Area対応 */
-padding-top: env(safe-area-inset-top);
-padding-bottom: env(safe-area-inset-bottom);
-padding-left: env(safe-area-inset-left);
-padding-right: env(safe-area-inset-right);
 ```
 
 ---
 
 ## 2. 技術スタック
 
-### 2.1 コア技術（必須）
+### 2.1 必須技術
 
-| 技術 | 用途 | 対応iOS |
-|-----|------|--------|
-| HTML5 | 構造 | 15.0+ |
-| CSS3 (カスタムプロパティ) | スタイリング | 15.0+ |
-| Vanilla JavaScript (ES6+) | ロジック | 15.0+ |
-| LocalStorage / IndexedDB | データ永続化 | 15.0+ |
-| Service Worker | オフライン対応 | 15.0+ |
-| Web App Manifest | PWA化 | 15.0+ |
+| 技術 | 用途 |
+|-----|------|
+| HTML5 | 構造 |
+| CSS3 | スタイリング |
+| Vanilla JavaScript | ロジック |
+| LocalStorage | 設定保存 |
+| IndexedDB | データ永続化 |
+| Service Worker | オフライン対応 |
 
-### 2.2 iOS Safari 対応バージョン
+### 2.2 対応iOS
 
-| iPhone | 最低iOS | Safari バージョン |
-|--------|---------|------------------|
-| iPhone 13 | iOS 15.0 | Safari 15 |
-| iPhone 14 | iOS 16.0 | Safari 16 |
-| iPhone 15 | iOS 17.0 | Safari 17 |
-| iPhone 16 | iOS 18.0 | Safari 18 |
-| iPhone 17 | iOS 19.0+ | Safari 19+ |
-
-**最低動作要件: iOS 15.0 / Safari 15**
+**最低要件: iOS 15.0+**（iPhone 13以降の初期OS）
 
 ### 2.3 禁止事項
 
-- 外部CDNへの依存（オフライン動作不可）
-- 重量級フレームワーク（React, Vue, Angular）
-- サーバーサイド処理への依存
-- 外部API呼び出し（初期版）
-- WebKit非対応のAPI使用
-
-### 2.4 推奨API
-
-```javascript
-// ファイル操作
-FileReader API          // 画像・ファイル読み込み ✅ iOS 15+
-// ※ File System Access API は Safari 未対応
-
-// グラフィック
-Canvas 2D API          // 画像処理 ✅ iOS 15+
-WebGL 2.0              // 3D表示 ✅ iOS 15+
-
-// ストレージ
-localStorage           // 軽量データ（~5MB）✅ iOS 15+
-IndexedDB             // 大容量データ ✅ iOS 15+
-
-// PWA
-Service Worker        // オフラインキャッシュ ✅ iOS 15+
-Cache API             // リソースキャッシュ ✅ iOS 15+
-
-// デバイス
-matchMedia            // 画面サイズ検知 ✅ iOS 15+
-prefers-color-scheme  // ダークモード検知 ✅ iOS 15+
-DeviceOrientationEvent // 画面回転検知 ✅ iOS 15+
-
-// iOS 16+ 推奨
-Web Push Notifications // プッシュ通知 ✅ iOS 16.4+
-Container Queries      // コンテナクエリ ✅ iOS 16+
-```
+- 外部CDN/ライブラリへの依存
+- サーバーサイド処理
+- 外部API呼び出し
+- 重量級フレームワーク
 
 ---
 
-## 3. UI要件
+## 3. ネイティブ体験
 
-### 3.1 レイアウト原則
-
-#### viewport 設定（必須）
+### 3.1 PWA設定（最小構成）
 
 ```html
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0,
-               viewport-fit=cover, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0,
+                 viewport-fit=cover, user-scalable=no">
+
+  <!-- PWA必須設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ツール名">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+</head>
 ```
 
-#### ブレークポイント（iPhone専用）
+### 3.2 manifest.json（最小構成）
 
-```css
-/* iPhone 13 mini（最小） */
-/* 375px - デフォルト */
-
-/* iPhone 13/14/15/16 標準 */
-@media (min-width: 390px) { }
-
-/* iPhone Plus / Pro Max */
-@media (min-width: 428px) { }
-
-/* 横向き（ランドスケープ） */
-@media (orientation: landscape) { }
+```json
+{
+  "name": "ツール名",
+  "short_name": "ツール",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
 ```
 
-### 3.2 タッチ操作要件（Apple HIG準拠）
-
-| 要素 | 最小サイズ | 推奨サイズ |
-|-----|----------|----------|
-| タップターゲット | 44×44 pt | 48×48 pt |
-| ボタン高さ | 44 pt | 50 pt |
-| 入力フィールド高さ | 44 pt | 48 pt |
-| 要素間スペース | 8 pt | 12 pt |
-| リスト行高さ | 44 pt | 56 pt |
-
-### 3.3 ジェスチャー対応
-
-```javascript
-// 必須対応
-- タップ (touchend / click)
-- スワイプ (touchstart → touchmove → touchend)
-- ロングプレス (touchstart + 500ms delay)
-
-// 推奨対応
-- ピンチズーム (gesturestart/gesturechange/gestureend)
-- ダブルタップ (300ms内の連続タップ検知)
-- エッジスワイプ (画面端からのスワイプ ※ネイティブと競合注意)
-```
-
-### 3.4 基本UIレイアウト
-
-```
-┌─────────────────────────────────┐
-│░░░░░░░░ Safe Area Top ░░░░░░░░│
-├─────────────────────────────────┤
-│ [Header Bar]           44pt    │
-│  タイトル          [Action]    │
-├─────────────────────────────────┤
-│                                 │
-│ [Main Content Area]             │
-│                                 │
-│  スクロール可能なコンテンツ     │
-│                                 │
-│  - 入力エリア                   │
-│  - プレビューエリア             │
-│  - コントロール                 │
-│                                 │
-├─────────────────────────────────┤
-│ [Bottom Action Bar]    56pt    │
-│  [Primary]  [Secondary]        │
-├─────────────────────────────────┤
-│░░░░░░ Safe Area Bottom ░░░░░░░│
-└─────────────────────────────────┘
-```
-
-### 3.5 iOS ネイティブ風スタイリング
-
-```css
-/* システムフォント */
-font-family: -apple-system, BlinkMacSystemFont,
-             'SF Pro Text', 'SF Pro Display', sans-serif;
-
-/* iOS標準の角丸 */
-border-radius: 12px;  /* カード */
-border-radius: 10px;  /* ボタン */
-border-radius: 8px;   /* 入力フィールド */
-
-/* ぼかし効果（iOS風） */
-backdrop-filter: blur(20px);
--webkit-backdrop-filter: blur(20px);
-
-/* バウンススクロール */
--webkit-overflow-scrolling: touch;
-overscroll-behavior: contain;
-
-/* タップハイライト無効化 */
--webkit-tap-highlight-color: transparent;
-
-/* テキスト選択カスタマイズ */
--webkit-user-select: none;
-user-select: none;
-```
-
----
-
-## 4. オフライン動作要件
-
-### 4.1 Service Worker 構成
+### 3.3 Service Worker（最小構成）
 
 ```javascript
 // sw.js
-const CACHE_NAME = 'ios-tool-v1';
+const CACHE_NAME = 'tool-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon-180.png',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-180.png',
+  './icon-512.png'
 ];
 
+// インストール時にキャッシュ
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
+// 古いキャッシュ削除
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -261,222 +150,199 @@ self.addEventListener('activate', (e) => {
         keys.filter(key => key !== CACHE_NAME)
             .map(key => caches.delete(key))
       )
-    )
+    ).then(() => self.clients.claim())
   );
 });
 
+// オフライン対応
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request)
-      .then(res => res || fetch(e.request))
+      .then(cached => cached || fetch(e.request))
   );
 });
 ```
 
-### 4.2 Web App Manifest（iOS対応）
+### 3.4 Service Worker 登録
 
-```json
-{
-  "name": "ツール名",
-  "short_name": "ツール",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "orientation": "portrait-primary",
-  "icons": [
-    { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+```javascript
+// index.html 内
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
 }
-```
-
-### 4.3 iOS専用メタタグ
-
-```html
-<!-- ホーム画面追加時のアイコン -->
-<link rel="apple-touch-icon" href="/icons/icon-180.png">
-
-<!-- スプラッシュスクリーン -->
-<link rel="apple-touch-startup-image" href="/splash.png">
-
-<!-- ステータスバー -->
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<!-- アプリタイトル -->
-<meta name="apple-mobile-web-app-title" content="ツール名">
 ```
 
 ---
 
-## 5. データ永続化要件
+## 4. ネットワーク対応
 
-### 5.1 ストレージ戦略
-
-| データ種別 | 推奨ストレージ | 容量目安 |
-|-----------|--------------|---------|
-| 設定・プリファレンス | localStorage | < 100KB |
-| テキストデータ | localStorage | < 1MB |
-| 画像データ | IndexedDB | < 50MB |
-| キャッシュ | Cache API | < 50MB |
-
-**注意**: iOS Safari では、7日間未使用のサイトのストレージが削除される可能性あり（PWAとしてホーム画面に追加すれば回避可能）
-
-### 5.2 IndexedDB 基本構造
+### 4.1 オンライン/オフライン検知（シンプル版）
 
 ```javascript
-class StorageManager {
-  constructor(dbName = 'ToolDB', version = 1) {
-    this.dbName = dbName;
-    this.version = version;
+// ネットワーク状態管理
+const network = {
+  isOnline: navigator.onLine,
+
+  init() {
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.updateUI();
+    });
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.updateUI();
+    });
+  },
+
+  updateUI() {
+    const indicator = document.getElementById('network-status');
+    if (indicator) {
+      indicator.textContent = this.isOnline ? '' : 'オフライン';
+      indicator.hidden = this.isOnline;
+    }
+  }
+};
+
+network.init();
+```
+
+### 4.2 ネットワークステータス表示（最小UI）
+
+```html
+<div id="network-status" hidden
+     style="position:fixed; top:env(safe-area-inset-top);
+            left:0; right:0; background:#ff3b30; color:#fff;
+            text-align:center; padding:4px; font-size:12px; z-index:9999;">
+  オフライン
+</div>
+```
+
+---
+
+## 5. データ永続化
+
+### 5.1 ストレージ選択
+
+| データ種別 | ストレージ | 容量目安 |
+|-----------|----------|---------|
+| 設定値 | localStorage | < 1MB |
+| コンテンツ | IndexedDB | < 50MB |
+
+### 5.2 localStorage 使用例
+
+```javascript
+// 設定の保存・読み込み
+const settings = {
+  save(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  },
+  load(key, defaultValue = null) {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : defaultValue;
+  }
+};
+```
+
+### 5.3 IndexedDB 使用例（シンプル版）
+
+```javascript
+class SimpleDB {
+  constructor(name = 'ToolDB') {
+    this.name = name;
     this.db = null;
   }
 
-  async init() {
+  async open() {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.version);
-
-      request.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains('items')) {
-          const store = db.createObjectStore('items', { keyPath: 'id' });
-          store.createIndex('createdAt', 'createdAt');
-        }
+      const req = indexedDB.open(this.name, 1);
+      req.onupgradeneeded = (e) => {
+        e.target.result.createObjectStore('data', { keyPath: 'id' });
       };
-
-      request.onsuccess = (e) => {
+      req.onsuccess = (e) => {
         this.db = e.target.result;
         resolve(this.db);
       };
-
-      request.onerror = () => reject(request.error);
+      req.onerror = () => reject(req.error);
     });
   }
 
-  async save(item) {
-    const tx = this.db.transaction('items', 'readwrite');
-    tx.objectStore('items').put(item);
-    return tx.complete;
+  async put(item) {
+    const tx = this.db.transaction('data', 'readwrite');
+    tx.objectStore('data').put(item);
+  }
+
+  async get(id) {
+    return new Promise((resolve) => {
+      const tx = this.db.transaction('data', 'readonly');
+      const req = tx.objectStore('data').get(id);
+      req.onsuccess = () => resolve(req.result);
+    });
   }
 
   async getAll() {
-    const tx = this.db.transaction('items', 'readonly');
-    return tx.objectStore('items').getAll();
+    return new Promise((resolve) => {
+      const tx = this.db.transaction('data', 'readonly');
+      const req = tx.objectStore('data').getAll();
+      req.onsuccess = () => resolve(req.result);
+    });
+  }
+
+  async delete(id) {
+    const tx = this.db.transaction('data', 'readwrite');
+    tx.objectStore('data').delete(id);
   }
 }
 ```
 
 ---
 
-## 6. パフォーマンス要件
+## 6. UI要件
 
-### 6.1 目標値
-
-| 指標 | 目標 | 備考 |
-|-----|------|-----|
-| First Contentful Paint | < 1.0s | iOS Safari |
-| Time to Interactive | < 2.0s | iOS Safari |
-| Largest Contentful Paint | < 2.0s | iOS Safari |
-| Total Bundle Size | < 100KB | gzip後 |
-| メモリ使用量 | < 150MB | Safari制限考慮 |
-| 60fps維持 | 必須 | スクロール・アニメーション |
-
-### 6.2 最適化テクニック
-
-```javascript
-// 画像処理の最大サイズ制限（iPhone向け）
-const MAX_CANVAS_SIZE = 2048; // iPhone は 4096 まで対応
-const RECOMMENDED_SIZE = 1024; // パフォーマンス考慮
-
-// WebP 出力（iOS 14+対応）
-canvas.toDataURL('image/webp', 0.85);
-
-// 遅延読み込み
-const img = new Image();
-img.loading = 'lazy';
-
-// requestAnimationFrame 活用
-function animate() {
-  // アニメーション処理
-  requestAnimationFrame(animate);
-}
-
-// Passive Event Listener（スクロール性能向上）
-element.addEventListener('touchstart', handler, { passive: true });
-```
-
----
-
-## 7. セキュリティ要件
-
-### 7.1 必須対策
-
-| 項目 | 対策 |
-|-----|------|
-| XSS防止 | innerHTML使用時のサニタイズ、textContent推奨 |
-| CSP | Content-Security-Policy メタタグ設定 |
-| HTTPS | 本番環境では必須（PWA要件） |
-| 入力検証 | ファイルタイプ・サイズの検証 |
-
-### 7.2 推奨CSPヘッダー
-
-```html
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self';
-               script-src 'self' 'unsafe-inline';
-               style-src 'self' 'unsafe-inline';
-               img-src 'self' data: blob:;
-               connect-src 'self';">
-```
-
----
-
-## 8. アクセシビリティ要件
-
-### 8.1 VoiceOver対応（必須）
-
-```html
-<!-- セマンティックHTML -->
-<main role="main">
-<nav role="navigation">
-<button aria-label="メニューを開く">
-
-<!-- 動的コンテンツ通知 -->
-<div aria-live="polite" aria-atomic="true">
-
-<!-- フォーカス管理 -->
-<button tabindex="0">
-<input aria-describedby="hint-text">
-```
-
-### 8.2 Dynamic Type対応
+### 6.1 CSS基本設定
 
 ```css
-/* iOS Dynamic Type対応 */
-font: -apple-system-body;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-/* または相対単位使用 */
-font-size: 1rem;  /* 16px基準 */
-line-height: 1.5;
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
 
-/* 最小・最大サイズ制限 */
-font-size: clamp(14px, 1rem, 24px);
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+
+  /* Safe Area対応 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+
+  /* タッチ最適化 */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-overflow-scrolling: touch;
+}
 ```
 
-### 8.3 ダークモード対応
+### 6.2 カラーテーマ（ダークモード対応）
 
 ```css
 :root {
   color-scheme: light dark;
 
-  /* ライトモード */
   --bg-primary: #ffffff;
   --bg-secondary: #f2f2f7;
   --text-primary: #000000;
-  --text-secondary: #3c3c43;
-  --separator: rgba(60, 60, 67, 0.29);
+  --text-secondary: #666666;
   --accent: #007aff;
+  --border: rgba(0, 0, 0, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -484,100 +350,141 @@ font-size: clamp(14px, 1rem, 24px);
     --bg-primary: #000000;
     --bg-secondary: #1c1c1e;
     --text-primary: #ffffff;
-    --text-secondary: #ebebf5;
-    --separator: rgba(84, 84, 88, 0.65);
+    --text-secondary: #999999;
     --accent: #0a84ff;
+    --border: rgba(255, 255, 255, 0.1);
   }
+}
+```
+
+### 6.3 タッチターゲット
+
+```css
+/* ボタン・タップ可能要素は最低44pt */
+button, .tappable {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px 16px;
+  border-radius: 10px;
+}
+```
+
+### 6.4 基本レイアウト
+
+```css
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-header {
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.app-footer {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
 }
 ```
 
 ---
 
-## 9. 最低限の実装チェックリスト
+## 7. 実装チェックリスト
 
-### Phase 1: 基本構造（必須）
+### 必須項目
 
-- [ ] viewport + Safe Area メタタグ設定
-- [ ] iOS システムフォント使用
-- [ ] タッチターゲット 44pt 以上
-- [ ] Safe Area 対応（env()）
+- [ ] viewport + Safe Area メタタグ
+- [ ] PWA メタタグ（apple-mobile-web-app-*）
+- [ ] manifest.json
+- [ ] Service Worker（オフライン対応）
+- [ ] アイコン（180px, 512px）
 - [ ] ダークモード対応
-- [ ] LocalStorage によるデータ保存
-- [ ] VoiceOver 基本対応
+- [ ] タッチターゲット 44pt 以上
+- [ ] ローカルストレージによるデータ保存
 
-### Phase 2: PWA化（推奨）
+### 推奨項目
 
-- [ ] Service Worker 実装
-- [ ] Web App Manifest 作成
-- [ ] apple-touch-icon 設定
-- [ ] オフライン動作確認
-- [ ] ホーム画面追加テスト
-
-### Phase 3: 最適化（推奨）
-
-- [ ] 60fps スクロール確認
-- [ ] メモリ使用量 < 150MB
-- [ ] Passive Event Listener 適用
-- [ ] 画像遅延読み込み
+- [ ] オフライン状態表示
+- [ ] スプラッシュスクリーン画像
 
 ---
 
-## 10. ファイル構成テンプレート
-
-### 10.1 単一ファイル構成（開発初期）
-
-```
-tool.html          # 全てを含む単一ファイル
-```
-
-### 10.2 PWA構成（本番推奨）
+## 8. ファイル構成（最小構成）
 
 ```
 /
-├── index.html
-├── manifest.json
-├── sw.js
-└── icons/
-    ├── icon-180.png   # iOS用
-    ├── icon-192.png   # Android/PWA用
-    └── icon-512.png   # スプラッシュ用
+├── index.html      # メインHTML（CSS/JS埋め込み可）
+├── manifest.json   # PWAマニフェスト
+├── sw.js           # Service Worker
+├── icon-180.png    # iOS用アイコン
+└── icon-512.png    # PWA用アイコン
+```
+
+### 単一ファイル構成（開発初期向け）
+
+```
+tool.html           # 全てを含む単一ファイル
+                    # ※manifest.json とアイコンは別途必要
 ```
 
 ---
 
-## 11. テスト環境
+## 9. テスト方法
 
-### 11.1 実機テスト（推奨）
-
-| デバイス | 優先度 |
-|---------|-------|
-| iPhone 15 / 16 | 高（標準サイズ） |
-| iPhone 15 Pro Max | 高（最大サイズ） |
-| iPhone 13 mini | 中（最小サイズ） |
-| iPhone 14 | 中（Dynamic Island無し） |
-
-### 11.2 シミュレータテスト
+### 9.1 ローカル開発サーバー
 
 ```bash
-# Xcode Simulator 起動
-open -a Simulator
+# Python
+python3 -m http.server 8080
 
-# Safari Web Inspector でデバッグ
-# Safari → 開発 → シミュレータ → ページ選択
+# Node.js (npx)
+npx serve
+
+# macOS
+open http://localhost:8080
 ```
+
+### 9.2 iPhoneでのテスト
+
+1. Mac と iPhone を同一ネットワークに接続
+2. `http://<MacのIPアドレス>:8080` にアクセス
+3. Safari の「共有」→「ホーム画面に追加」
+4. ホーム画面からアプリとして起動
+
+### 9.3 オフラインテスト
+
+1. ホーム画面に追加した状態で起動
+2. 機内モードをON
+3. アプリが正常に動作することを確認
 
 ---
 
-## 12. 参考リソース
+## 10. 運用
 
-### Apple 公式ドキュメント
-- [Human Interface Guidelines - iOS](https://developer.apple.com/design/human-interface-guidelines/ios)
-- [Safari Web Content Guide](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/)
-- [Configuring Web Applications](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html)
+### 10.1 アップデート方法
 
-### Web標準
-- [PWA - web.dev](https://web.dev/progressive-web-apps/)
-- [CSS env() - MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/env)
+1. `sw.js` の `CACHE_NAME` を更新（例: `tool-v2`）
+2. ファイルをサーバーに配置
+3. アプリを開くと自動更新
+
+### 10.2 キャッシュクリア
+
+開発中にキャッシュをクリアしたい場合:
+- Safari → 設定 → Webサイトデータを消去
+- または開発者ツールから Service Worker を削除
 
 ---
 
@@ -586,4 +493,6 @@ open -a Simulator
 | 日付 | バージョン | 変更内容 |
 |-----|-----------|---------|
 | 2026-02-01 | 1.0.0 | 初版作成 |
-| 2026-02-01 | 1.1.0 | iPhone 13〜17 特化版に更新 |
+| 2026-02-01 | 1.1.0 | iPhone 13〜17 特化版 |
+| 2026-02-01 | 2.0.0 | ネットワーク対応追加 |
+| 2026-02-01 | 2.1.0 | 開発者個人利用向けに簡素化 |
