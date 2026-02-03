@@ -3,22 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Artifact Image Generator - 記事画像自動生成</title>
+  <meta name="description" content="AIを活用したブログ記事・画像自動生成ツール">
+  <title>Articraft - ブログ記事 & 画像自動生成</title>
   <style>
     :root {
-      color-scheme: light dark;
-      --bg-light: #f8fafc;
-      --bg-dark: #0f172a;
-      --card-light: #ffffff;
-      --card-dark: #1e293b;
-      --text-light: #1e293b;
-      --text-dark: #e2e8f0;
-      --accent: #6366f1;
-      --accent-hover: #4f46e5;
-      --border-light: #e2e8f0;
-      --border-dark: #334155;
-      --success: #10b981;
-      --warning: #f59e0b;
+      /* Brand Colors */
+      --brand-primary: #6366f1;
+      --brand-secondary: #8b5cf6;
+      --brand-accent: #ec4899;
+      --brand-success: #10b981;
+      --brand-warning: #f59e0b;
+
+      /* Light Mode */
+      --bg-primary: #fafbfc;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f1f5f9;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+      /* Spacing */
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-5: 1.25rem;
+      --space-6: 1.5rem;
+      --space-8: 2rem;
+
+      /* Border Radius */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+
+      /* Transitions */
+      --transition-fast: 150ms ease;
+      --transition-normal: 250ms ease;
+      --transition-slow: 350ms ease;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+      --border-color: #334155;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
     }
 
     * {
@@ -28,531 +70,793 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-      background: var(--bg-light);
-      color: var(--text-light);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       min-height: 100vh;
       line-height: 1.6;
+      transition: background var(--transition-normal), color var(--transition-normal);
     }
 
-    @media (prefers-color-scheme: dark) {
-      body {
-        background: var(--bg-dark);
-        color: var(--text-dark);
-      }
-      .card {
-        background: var(--card-dark);
-        border-color: var(--border-dark);
-      }
-      input, textarea, select {
-        background: var(--bg-dark);
-        color: var(--text-dark);
-        border-color: var(--border-dark);
-      }
+    /* ===== Navigation ===== */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
-    header {
-      background: linear-gradient(135deg, var(--accent), #8b5cf6);
-      color: white;
-      padding: 2rem;
-      text-align: center;
-    }
-
-    header h1 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    header p {
-      opacity: 0.9;
-      font-size: 0.95rem;
-    }
-
-    .container {
+    .nav-content {
       max-width: 1400px;
       margin: 0 auto;
-      padding: 1.5rem;
+      padding: var(--space-4) var(--space-6);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .nav-logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .nav-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-stats {
+      display: flex;
+      align-items: center;
+      gap: var(--space-6);
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .stat-icon {
+      font-size: 1rem;
+    }
+
+    .stat-value {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .streak-badge {
+      background: linear-gradient(135deg, var(--brand-warning), #f97316);
+      color: white;
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.125rem;
+      transition: all var(--transition-fast);
+    }
+
+    .icon-btn:hover {
+      background: var(--border-color);
+      color: var(--text-primary);
+    }
+
+    /* ===== Main Layout ===== */
+    .main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: var(--space-6);
     }
 
     .layout {
       display: grid;
-      gap: 1.5rem;
+      gap: var(--space-6);
       grid-template-columns: 1fr;
     }
 
     @media (min-width: 1024px) {
       .layout {
-        grid-template-columns: 400px 1fr;
+        grid-template-columns: 420px 1fr;
       }
     }
 
+    /* ===== Cards ===== */
     .card {
-      background: var(--card-light);
-      border: 1px solid var(--border-light);
-      border-radius: 16px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      transition: box-shadow var(--transition-normal);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+    }
+
+    .card-header {
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .card-title {
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 600;
-      margin-bottom: 1rem;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: var(--space-2);
     }
 
-    .card-title::before {
-      content: '';
-      width: 4px;
-      height: 1.2em;
-      background: var(--accent);
-      border-radius: 2px;
+    .card-title-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.875rem;
     }
 
-    .form-group {
-      margin-bottom: 1.25rem;
+    .card-body {
+      padding: var(--space-6);
     }
 
-    .form-group label {
-      display: block;
-      font-size: 0.85rem;
+    /* ===== Input Section ===== */
+    .input-section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+    }
+
+    .input-label {
+      font-size: 0.875rem;
       font-weight: 500;
-      margin-bottom: 0.5rem;
-      color: inherit;
-      opacity: 0.8;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+      display: block;
     }
 
-    input[type="text"],
-    textarea,
-    select {
+    .textarea-container {
+      position: relative;
+    }
+
+    .main-textarea {
       width: 100%;
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--border-light);
-      border-radius: 8px;
+      min-height: 200px;
+      padding: var(--space-4);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--bg-tertiary);
       font-size: 1rem;
       font-family: inherit;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    input:focus,
-    textarea:focus,
-    select:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-    }
-
-    textarea {
+      line-height: 1.7;
+      color: var(--text-primary);
       resize: vertical;
-      min-height: 100px;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     }
 
-    .style-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.5rem;
+    .main-textarea:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
     }
 
-    .style-btn {
-      padding: 0.6rem;
-      border: 2px solid var(--border-light);
-      border-radius: 8px;
-      background: transparent;
+    .main-textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .char-count {
+      position: absolute;
+      bottom: var(--space-3);
+      right: var(--space-3);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+    }
+
+    .prompt-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .suggestion-chip {
+      padding: var(--space-2) var(--space-3);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
       cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .suggestion-chip:hover {
+      background: var(--brand-primary);
+      border-color: var(--brand-primary);
+      color: white;
+    }
+
+    /* ===== Generate Button ===== */
+    .generate-btn {
+      width: 100%;
+      padding: var(--space-4) var(--space-6);
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+      border: none;
+      border-radius: var(--radius-lg);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      transition: all var(--transition-normal);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .generate-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--brand-secondary), var(--brand-accent));
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+    }
+
+    .generate-btn:hover::before {
+      opacity: 1;
+    }
+
+    .generate-btn span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .generate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .generate-btn:active {
+      transform: translateY(0);
+    }
+
+    .generate-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ===== Output Section ===== */
+    .output-placeholder {
+      text-align: center;
+      padding: var(--space-8);
+      color: var(--text-muted);
+    }
+
+    .placeholder-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto var(--space-4);
+      background: var(--bg-tertiary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+
+    .placeholder-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .placeholder-desc {
+      font-size: 0.875rem;
+    }
+
+    /* ===== Loading State ===== */
+    .loading-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-8);
+    }
+
+    .loading-state.active {
+      display: flex;
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--brand-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .loading-progress {
+      width: 200px;
+      height: 4px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .loading-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+      width: 0%;
+      animation: progress 2s ease-in-out infinite;
+    }
+
+    @keyframes progress {
+      0% { width: 0%; }
+      50% { width: 70%; }
+      100% { width: 100%; }
+    }
+
+    /* ===== Article Output ===== */
+    .article-output {
+      display: none;
+    }
+
+    .article-output.visible {
+      display: block;
+    }
+
+    .article-header {
+      margin-bottom: var(--space-6);
+      padding-bottom: var(--space-4);
+      border-bottom: 2px solid var(--brand-primary);
+    }
+
+    .article-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.4;
+      color: var(--text-primary);
+    }
+
+    .article-meta {
+      display: flex;
+      gap: var(--space-4);
+      margin-top: var(--space-3);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .article-content {
+      font-size: 1rem;
+      line-height: 1.9;
+      color: var(--text-secondary);
+    }
+
+    .article-content h2 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: var(--space-6) 0 var(--space-3);
+      padding-left: var(--space-4);
+      border-left: 3px solid var(--brand-primary);
+    }
+
+    .article-content strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .article-actions {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-6);
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      transition: all var(--transition-fast);
+    }
+
+    .action-btn:hover {
+      background: var(--brand-primary);
+      border-color: var(--brand-primary);
+      color: white;
+    }
+
+    /* ===== Image Section ===== */
+    .image-section {
+      display: none;
+      margin-top: var(--space-6);
+    }
+
+    .image-section.visible {
+      display: block;
+    }
+
+    .image-tabs {
+      display: flex;
+      background: var(--bg-tertiary);
+      padding: var(--space-1);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-4);
+    }
+
+    .image-tab {
+      flex: 1;
+      padding: var(--space-3);
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .image-tab.active {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .canvas-container {
+      background: repeating-conic-gradient(var(--bg-tertiary) 0% 25%, var(--bg-secondary) 0% 50%) 50% / 16px 16px;
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      display: flex;
+      justify-content: center;
+    }
+
+    .canvas-container canvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+    }
+
+    .image-controls {
+      margin-top: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+
+    .control-label {
       font-size: 0.8rem;
       font-weight: 500;
-      transition: all 0.2s;
-      color: inherit;
+      color: var(--text-muted);
+      min-width: 60px;
     }
 
-    .style-btn:hover {
-      border-color: var(--accent);
-    }
-
-    .style-btn.active {
-      border-color: var(--accent);
-      background: rgba(99, 102, 241, 0.1);
-      color: var(--accent);
-    }
-
-    .color-presets {
+    .style-options {
       display: flex;
-      gap: 0.5rem;
+      gap: var(--space-2);
       flex-wrap: wrap;
     }
 
-    .color-preset {
+    .style-option {
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .style-option:hover {
+      border-color: var(--brand-primary);
+    }
+
+    .style-option.active {
+      background: var(--brand-primary);
+      border-color: var(--brand-primary);
+      color: white;
+    }
+
+    .color-options {
+      display: flex;
+      gap: var(--space-2);
+    }
+
+    .color-option {
       width: 32px;
       height: 32px;
       border-radius: 50%;
       border: 3px solid transparent;
       cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s;
+      transition: all var(--transition-fast);
     }
 
-    .color-preset:hover {
+    .color-option:hover {
       transform: scale(1.1);
     }
 
-    .color-preset.active {
-      border-color: var(--text-light);
+    .color-option.active {
+      border-color: var(--text-primary);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .color-preset.active {
-        border-color: var(--text-dark);
-      }
+    /* ===== History Section ===== */
+    .history-section {
+      margin-top: var(--space-6);
     }
 
-    .slider-group {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .slider-group input[type="range"] {
-      flex: 1;
-      height: 6px;
-      -webkit-appearance: none;
-      background: var(--border-light);
-      border-radius: 3px;
-      padding: 0;
-      border: none;
-    }
-
-    .slider-group input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      background: var(--accent);
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    .slider-value {
-      min-width: 3rem;
-      text-align: right;
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--accent-hover);
-    }
-
-    .btn-secondary {
-      background: transparent;
-      border: 2px solid var(--accent);
-      color: var(--accent);
-    }
-
-    .btn-secondary:hover {
-      background: rgba(99, 102, 241, 0.1);
-    }
-
-    .btn-success {
-      background: var(--success);
-      color: white;
-    }
-
-    .btn-success:hover {
-      background: #059669;
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    .preview-section {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .preview-card {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .preview-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .preview-label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--accent);
-    }
-
-    .canvas-wrapper {
-      position: relative;
-      background: repeating-conic-gradient(#e5e5e5 0% 25%, white 0% 50%) 50% / 20px 20px;
-      border-radius: 12px;
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 200px;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .canvas-wrapper {
-        background: repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50% / 20px 20px;
-      }
-    }
-
-    canvas {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 0.25rem;
-      background: var(--border-light);
-      padding: 0.25rem;
-      border-radius: 10px;
-      margin-bottom: 1.5rem;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .tabs {
-        background: var(--border-dark);
-      }
-    }
-
-    .tab {
-      flex: 1;
-      padding: 0.6rem 1rem;
-      border: none;
-      border-radius: 8px;
-      background: transparent;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      color: inherit;
-      transition: all 0.2s;
-    }
-
-    .tab.active {
-      background: var(--card-light);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .tab.active {
-        background: var(--card-dark);
-      }
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    .keyword-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-
-    .keyword-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.35rem 0.75rem;
-      background: rgba(99, 102, 241, 0.1);
-      color: var(--accent);
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }
-
-    .keyword-tag button {
-      background: none;
-      border: none;
-      color: inherit;
-      cursor: pointer;
-      padding: 0;
-      font-size: 1rem;
-      line-height: 1;
-      opacity: 0.7;
-    }
-
-    .keyword-tag button:hover {
-      opacity: 1;
-    }
-
-    .icon-grid {
+    .history-grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 0.5rem;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: var(--space-3);
     }
 
-    .icon-btn {
-      aspect-ratio: 1;
-      border: 2px solid var(--border-light);
-      border-radius: 8px;
-      background: transparent;
-      cursor: pointer;
-      font-size: 1.25rem;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .icon-btn:hover {
-      border-color: var(--accent);
-      background: rgba(99, 102, 241, 0.1);
-    }
-
-    .icon-btn.active {
-      border-color: var(--accent);
-      background: rgba(99, 102, 241, 0.15);
-    }
-
-    .gallery-section {
-      margin-top: 2rem;
-    }
-
-    .gallery-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .gallery-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-    }
-
-    @media (min-width: 768px) {
-      .gallery-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    @media (min-width: 1200px) {
-      .gallery-grid {
-        grid-template-columns: repeat(4, 1fr);
-      }
-    }
-
-    .gallery-item {
+    .history-item {
       position: relative;
-      border-radius: 12px;
-      overflow: hidden;
-      cursor: pointer;
       aspect-ratio: 16/9;
-      background: var(--border-light);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      transition: all var(--transition-fast);
     }
 
-    .gallery-item img {
+    .history-item:hover {
+      border-color: var(--brand-primary);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .history-item img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s;
     }
 
-    .gallery-item:hover img {
-      transform: scale(1.05);
-    }
-
-    .gallery-item-overlay {
+    .history-item-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity var(--transition-fast);
       display: flex;
-      align-items: flex-end;
-      padding: 0.75rem;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: var(--space-3);
     }
 
-    .gallery-item:hover .gallery-item-overlay {
+    .history-item:hover .history-item-overlay {
       opacity: 1;
     }
 
-    .gallery-item-title {
+    .history-item-title {
+      font-size: 0.75rem;
       color: white;
-      font-size: 0.8rem;
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .gallery-item-delete {
+    .history-item-date {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .history-item-delete {
       position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      width: 28px;
-      height: 28px;
+      top: var(--space-2);
+      right: var(--space-2);
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: rgba(0,0,0,0.5);
       border: none;
       color: white;
+      font-size: 0.75rem;
       cursor: pointer;
-      font-size: 1rem;
+      opacity: 0;
+      transition: all var(--transition-fast);
       display: flex;
       align-items: center;
       justify-content: center;
-      opacity: 0;
-      transition: opacity 0.3s, background 0.2s;
     }
 
-    .gallery-item:hover .gallery-item-delete {
+    .history-item:hover .history-item-delete {
       opacity: 1;
     }
 
-    .gallery-item-delete:hover {
-      background: rgba(239, 68, 68, 0.8);
+    .history-item-delete:hover {
+      background: #ef4444;
     }
 
-    .empty-gallery {
+    .empty-history {
       text-align: center;
-      padding: 3rem;
-      color: inherit;
-      opacity: 0.5;
+      padding: var(--space-8);
+      color: var(--text-muted);
+      font-size: 0.875rem;
     }
 
+    /* ===== Features Section ===== */
+    .features-grid {
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .feature-card {
+      padding: var(--space-4);
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-lg);
+      display: flex;
+      gap: var(--space-4);
+      transition: all var(--transition-fast);
+    }
+
+    .feature-card:hover {
+      background: var(--border-color);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .feature-content {
+      flex: 1;
+    }
+
+    .feature-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--space-1);
+    }
+
+    .feature-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: fixed;
+      bottom: var(--space-6);
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: var(--space-4) var(--space-6);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      opacity: 0;
+      transition: all var(--transition-normal);
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast-icon {
+      width: 24px;
+      height: 24px;
+      background: var(--brand-success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.75rem;
+    }
+
+    .toast-message {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    /* ===== Modal ===== */
     .modal {
       display: none;
       position: fixed;
@@ -561,7 +865,7 @@
       background: rgba(0, 0, 0, 0.9);
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      padding: var(--space-4);
     }
 
     .modal.active {
@@ -577,15 +881,15 @@
       max-width: 100%;
       max-height: 85vh;
       object-fit: contain;
-      border-radius: 8px;
+      border-radius: var(--radius-md);
     }
 
     .modal-close {
       position: absolute;
-      top: 1rem;
-      right: 1rem;
-      width: 40px;
-      height: 40px;
+      top: var(--space-4);
+      right: var(--space-4);
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.1);
       border: none;
@@ -595,207 +899,270 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      transition: background var(--transition-fast);
     }
 
     .modal-close:hover {
       background: rgba(255, 255, 255, 0.2);
     }
 
-    .toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: var(--card-dark);
-      color: white;
-      padding: 1rem 1.5rem;
-      border-radius: 10px;
-      font-weight: 500;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-      opacity: 0;
-      transition: all 0.3s ease;
-      z-index: 2000;
-    }
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .nav-stats {
+        display: none;
+      }
 
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
+      .main {
+        padding: var(--space-4);
+      }
 
-    footer {
-      text-align: center;
-      padding: 2rem;
-      opacity: 0.6;
-      font-size: 0.85rem;
-    }
-
-    /* Animation */
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .generating {
-      animation: pulse 1s ease-in-out infinite;
+      .card-body {
+        padding: var(--space-4);
+      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>🎨 Artifact Image Generator</h1>
-    <p>記事の見出し画像・補完画像を自動生成</p>
-  </header>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-content">
+      <a href="#" class="nav-brand">
+        <div class="nav-logo">A</div>
+        <span class="nav-title">Articraft</span>
+      </a>
 
-  <div class="container">
-    <div class="layout">
-      <!-- Input Panel -->
-      <aside class="card">
-        <h2 class="card-title">入力設定</h2>
-
-        <div class="tabs">
-          <button class="tab active" data-tab="thumbnail">サムネイル</button>
-          <button class="tab" data-tab="supplement">補完画像</button>
+      <div class="nav-stats">
+        <div class="stat-item">
+          <span class="stat-icon">📝</span>
+          <span>生成数</span>
+          <span class="stat-value" id="totalGenerated">0</span>
         </div>
-
-        <!-- Thumbnail Settings -->
-        <div class="tab-content active" id="tab-thumbnail">
-          <div class="form-group">
-            <label for="title">記事タイトル</label>
-            <input type="text" id="title" placeholder="例: AIが変える未来の働き方">
-          </div>
-
-          <div class="form-group">
-            <label for="subtitle">サブタイトル（任意）</label>
-            <input type="text" id="subtitle" placeholder="例: 2025年最新トレンド解説">
-          </div>
-
-          <div class="form-group">
-            <label>スタイル</label>
-            <div class="style-grid">
-              <button class="style-btn active" data-style="gradient">グラデ</button>
-              <button class="style-btn" data-style="geometric">幾何学</button>
-              <button class="style-btn" data-style="minimal">ミニマル</button>
-              <button class="style-btn" data-style="wave">ウェーブ</button>
-              <button class="style-btn" data-style="particles">粒子</button>
-              <button class="style-btn" data-style="mesh">メッシュ</button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>カラーテーマ</label>
-            <div class="color-presets">
-              <button class="color-preset active" data-colors="#6366f1,#8b5cf6" style="background: linear-gradient(135deg, #6366f1, #8b5cf6)"></button>
-              <button class="color-preset" data-colors="#10b981,#3b82f6" style="background: linear-gradient(135deg, #10b981, #3b82f6)"></button>
-              <button class="color-preset" data-colors="#f59e0b,#ef4444" style="background: linear-gradient(135deg, #f59e0b, #ef4444)"></button>
-              <button class="color-preset" data-colors="#ec4899,#8b5cf6" style="background: linear-gradient(135deg, #ec4899, #8b5cf6)"></button>
-              <button class="color-preset" data-colors="#14b8a6,#06b6d4" style="background: linear-gradient(135deg, #14b8a6, #06b6d4)"></button>
-              <button class="color-preset" data-colors="#1e293b,#475569" style="background: linear-gradient(135deg, #1e293b, #475569)"></button>
-              <button class="color-preset" data-colors="#dc2626,#991b1b" style="background: linear-gradient(135deg, #dc2626, #991b1b)"></button>
-              <button class="color-preset" data-colors="#7c3aed,#2563eb" style="background: linear-gradient(135deg, #7c3aed, #2563eb)"></button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>フォントサイズ</label>
-            <div class="slider-group">
-              <input type="range" id="fontSize" min="24" max="72" value="42">
-              <span class="slider-value" id="fontSizeValue">42px</span>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>アイコン（任意）</label>
-            <div class="icon-grid">
-              <button class="icon-btn" data-icon="">なし</button>
-              <button class="icon-btn" data-icon="💡">💡</button>
-              <button class="icon-btn" data-icon="🚀">🚀</button>
-              <button class="icon-btn" data-icon="🔥">🔥</button>
-              <button class="icon-btn" data-icon="✨">✨</button>
-              <button class="icon-btn" data-icon="📱">📱</button>
-              <button class="icon-btn" data-icon="💻">💻</button>
-              <button class="icon-btn" data-icon="🎯">🎯</button>
-              <button class="icon-btn" data-icon="📊">📊</button>
-              <button class="icon-btn" data-icon="🔧">🔧</button>
-              <button class="icon-btn" data-icon="📝">📝</button>
-              <button class="icon-btn" data-icon="🎨">🎨</button>
-            </div>
-          </div>
+        <div class="streak-badge" id="streakBadge" style="display: none;">
+          <span>🔥</span>
+          <span id="streakDays">0</span>日連続
         </div>
+      </div>
 
-        <!-- Supplement Image Settings -->
-        <div class="tab-content" id="tab-supplement">
-          <div class="form-group">
-            <label for="summaryTitle">画像タイトル</label>
-            <input type="text" id="summaryTitle" placeholder="例: 記事のポイント">
-          </div>
-
-          <div class="form-group">
-            <label for="summaryText">要約テキスト</label>
-            <textarea id="summaryText" placeholder="例:&#10;• AIによる業務自動化が加速&#10;• リモートワークの定着&#10;• 新しいスキルの需要"></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="keywords">キーワード（カンマ区切り）</label>
-            <input type="text" id="keywords" placeholder="例: AI, 働き方改革, DX">
-            <div class="keyword-list" id="keywordList"></div>
-          </div>
-
-          <div class="form-group">
-            <label>レイアウト</label>
-            <div class="style-grid">
-              <button class="style-btn active" data-layout="list">リスト</button>
-              <button class="style-btn" data-layout="card">カード</button>
-              <button class="style-btn" data-layout="infographic">図解</button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>カラーテーマ</label>
-            <div class="color-presets" id="supplementColors">
-              <button class="color-preset active" data-colors="#6366f1,#8b5cf6" style="background: linear-gradient(135deg, #6366f1, #8b5cf6)"></button>
-              <button class="color-preset" data-colors="#10b981,#3b82f6" style="background: linear-gradient(135deg, #10b981, #3b82f6)"></button>
-              <button class="color-preset" data-colors="#f59e0b,#ef4444" style="background: linear-gradient(135deg, #f59e0b, #ef4444)"></button>
-              <button class="color-preset" data-colors="#ec4899,#8b5cf6" style="background: linear-gradient(135deg, #ec4899, #8b5cf6)"></button>
-              <button class="color-preset" data-colors="#14b8a6,#06b6d4" style="background: linear-gradient(135deg, #14b8a6, #06b6d4)"></button>
-              <button class="color-preset" data-colors="#1e293b,#475569" style="background: linear-gradient(135deg, #1e293b, #475569)"></button>
-            </div>
-          </div>
-        </div>
-
-        <div class="btn-group" style="margin-top: 1.5rem;">
-          <button class="btn btn-primary" id="generateBtn">🎨 生成</button>
-          <button class="btn btn-success" id="saveBtn">💾 保存</button>
-        </div>
-      </aside>
-
-      <!-- Preview Panel -->
-      <main class="preview-section">
-        <div class="card preview-card">
-          <div class="preview-header">
-            <span class="preview-label">プレビュー</span>
-            <div class="btn-group">
-              <button class="btn btn-secondary" id="downloadBtn">⬇️ ダウンロード</button>
-              <button class="btn btn-secondary" id="copyBtn">📋 コピー</button>
-            </div>
-          </div>
-          <div class="canvas-wrapper">
-            <canvas id="canvas" width="1200" height="630"></canvas>
-          </div>
-        </div>
-
-        <!-- Gallery -->
-        <section class="gallery-section card">
-          <div class="gallery-header">
-            <h2 class="card-title">保存した画像</h2>
-            <button class="btn btn-secondary" id="clearGalleryBtn">🗑️ 全削除</button>
-          </div>
-          <div class="gallery-grid" id="galleryGrid">
-            <div class="empty-gallery">保存した画像はありません</div>
-          </div>
-        </section>
-      </main>
+      <div class="nav-actions">
+        <button class="icon-btn" id="historyBtn" title="履歴">📚</button>
+        <button class="icon-btn" id="themeToggle" title="テーマ切替">🌙</button>
+      </div>
     </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="layout">
+      <!-- Input Column -->
+      <div class="input-column">
+        <!-- Input Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span class="card-title-icon">💭</span>
+              イイタイコト
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="input-section">
+              <div>
+                <label class="input-label">あなたの想いを自由に書いてください</label>
+                <div class="textarea-container">
+                  <textarea class="main-textarea" id="inputText" placeholder="例：
+・最近、完璧主義で疲れてる
+・SNSでキラキラした投稿ばかり見て落ち込む
+・もっと気楽に生きたい
+
+など、自由に書いてください"></textarea>
+                  <div class="char-count"><span id="charCount">0</span>文字</div>
+                </div>
+              </div>
+
+              <div>
+                <label class="input-label">クイック入力</label>
+                <div class="prompt-suggestions">
+                  <button class="suggestion-chip" data-text="仕事のストレスが溜まっている">💼 仕事ストレス</button>
+                  <button class="suggestion-chip" data-text="人間関係に悩んでいる">👥 人間関係</button>
+                  <button class="suggestion-chip" data-text="自分に自信が持てない">💪 自信がない</button>
+                  <button class="suggestion-chip" data-text="将来が不安">🌅 将来不安</button>
+                  <button class="suggestion-chip" data-text="やる気が出ない">⚡ やる気なし</button>
+                </div>
+              </div>
+
+              <button class="generate-btn" id="generateBtn">
+                <span>✨</span>
+                <span>記事と画像を生成</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Features Card -->
+        <div class="card" style="margin-top: var(--space-4);">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span class="card-title-icon">⭐</span>
+              特徴
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="features-grid">
+              <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <div class="feature-content">
+                  <div class="feature-title">SEO最適化</div>
+                  <div class="feature-desc">検索エンジンに最適化された記事構成</div>
+                </div>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">🖼️</div>
+                <div class="feature-content">
+                  <div class="feature-title">画像自動生成</div>
+                  <div class="feature-desc">見出し画像と補完画像を同時に作成</div>
+                </div>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">💝</div>
+                <div class="feature-content">
+                  <div class="feature-title">親しみやすい文体</div>
+                  <div class="feature-desc">読者に寄り添うフレンドリーな文章</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output Column -->
+      <div class="output-column">
+        <!-- Article Output Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span class="card-title-icon">📄</span>
+              生成された記事
+            </h2>
+          </div>
+          <div class="card-body">
+            <!-- Placeholder -->
+            <div class="output-placeholder" id="outputPlaceholder">
+              <div class="placeholder-icon">📝</div>
+              <div class="placeholder-title">記事が表示されます</div>
+              <div class="placeholder-desc">左側に想いを入力して生成ボタンを押してください</div>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading-state" id="loadingState">
+              <div class="loading-spinner"></div>
+              <div class="loading-text">記事と画像を生成中...</div>
+              <div class="loading-progress">
+                <div class="loading-progress-bar"></div>
+              </div>
+            </div>
+
+            <!-- Article -->
+            <div class="article-output" id="articleOutput">
+              <div class="article-header">
+                <h3 class="article-title" id="articleTitle"></h3>
+                <div class="article-meta">
+                  <span>📅 <span id="articleDate"></span></span>
+                  <span>📖 約<span id="articleWordCount"></span>文字</span>
+                </div>
+              </div>
+              <div class="article-content" id="articleContent"></div>
+              <div class="article-actions">
+                <button class="action-btn" onclick="copyArticle()">
+                  <span>📋</span> コピー
+                </button>
+                <button class="action-btn" onclick="regenerate()">
+                  <span>🔄</span> 再生成
+                </button>
+                <button class="action-btn" onclick="saveToHistory()">
+                  <span>💾</span> 保存
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Section -->
+        <div class="card image-section" id="imageSection">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span class="card-title-icon">🖼️</span>
+              自動生成画像
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="image-tabs">
+              <button class="image-tab active" data-tab="thumbnail">見出し画像</button>
+              <button class="image-tab" data-tab="supplement">補完画像</button>
+            </div>
+
+            <div class="canvas-container">
+              <canvas id="imageCanvas" width="1200" height="630"></canvas>
+            </div>
+
+            <div class="image-controls">
+              <div class="control-row">
+                <span class="control-label">スタイル</span>
+                <div class="style-options">
+                  <button class="style-option active" data-style="gradient">グラデーション</button>
+                  <button class="style-option" data-style="geometric">幾何学</button>
+                  <button class="style-option" data-style="wave">ウェーブ</button>
+                  <button class="style-option" data-style="minimal">ミニマル</button>
+                </div>
+              </div>
+
+              <div class="control-row">
+                <span class="control-label">カラー</span>
+                <div class="color-options">
+                  <button class="color-option active" data-colors="#6366f1,#8b5cf6" style="background: linear-gradient(135deg, #6366f1, #8b5cf6)"></button>
+                  <button class="color-option" data-colors="#ec4899,#f43f5e" style="background: linear-gradient(135deg, #ec4899, #f43f5e)"></button>
+                  <button class="color-option" data-colors="#10b981,#14b8a6" style="background: linear-gradient(135deg, #10b981, #14b8a6)"></button>
+                  <button class="color-option" data-colors="#f59e0b,#f97316" style="background: linear-gradient(135deg, #f59e0b, #f97316)"></button>
+                  <button class="color-option" data-colors="#3b82f6,#06b6d4" style="background: linear-gradient(135deg, #3b82f6, #06b6d4)"></button>
+                  <button class="color-option" data-colors="#1e293b,#334155" style="background: linear-gradient(135deg, #1e293b, #334155)"></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="article-actions" style="margin-top: var(--space-4);">
+              <button class="action-btn" onclick="downloadImage()">
+                <span>⬇️</span> ダウンロード
+              </button>
+              <button class="action-btn" onclick="copyImage()">
+                <span>📋</span> コピー
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="card history-section" id="historySection" style="display: none;">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span class="card-title-icon">📚</span>
+              生成履歴
+            </h2>
+            <button class="action-btn" onclick="clearHistory()" style="flex: none; padding: var(--space-2) var(--space-3);">
+              🗑️ 全削除
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="history-grid" id="historyGrid">
+              <div class="empty-history">履歴がありません</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <div class="toast-icon">✓</div>
+    <span class="toast-message" id="toastMessage"></span>
   </div>
 
   <!-- Modal -->
@@ -806,170 +1173,318 @@
     </div>
   </div>
 
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
-
-  <footer>
-    Artifact Image Generator | 記事画像自動生成ツール
-  </footer>
-
   <script>
-    // State
-    let currentTab = 'thumbnail';
-    let thumbnailSettings = {
-      style: 'gradient',
-      colors: ['#6366f1', '#8b5cf6'],
-      fontSize: 42,
-      icon: ''
+    // ===== State Management =====
+    const state = {
+      generatedArticle: { title: '', content: '', keywords: [] },
+      currentImageTab: 'thumbnail',
+      currentStyle: 'gradient',
+      currentColors: ['#6366f1', '#8b5cf6'],
+      history: JSON.parse(localStorage.getItem('articraft_history') || '[]'),
+      stats: JSON.parse(localStorage.getItem('articraft_stats') || '{"totalGenerated": 0, "lastGeneratedDate": null, "streak": 0}'),
+      theme: localStorage.getItem('articraft_theme') || 'light'
     };
-    let supplementSettings = {
-      layout: 'list',
-      colors: ['#6366f1', '#8b5cf6']
+
+    // ===== DOM Elements =====
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    const elements = {
+      inputText: $('#inputText'),
+      charCount: $('#charCount'),
+      generateBtn: $('#generateBtn'),
+      outputPlaceholder: $('#outputPlaceholder'),
+      loadingState: $('#loadingState'),
+      articleOutput: $('#articleOutput'),
+      articleTitle: $('#articleTitle'),
+      articleContent: $('#articleContent'),
+      articleDate: $('#articleDate'),
+      articleWordCount: $('#articleWordCount'),
+      imageSection: $('#imageSection'),
+      canvas: $('#imageCanvas'),
+      historySection: $('#historySection'),
+      historyGrid: $('#historyGrid'),
+      toast: $('#toast'),
+      toastMessage: $('#toastMessage'),
+      totalGenerated: $('#totalGenerated'),
+      streakBadge: $('#streakBadge'),
+      streakDays: $('#streakDays'),
+      themeToggle: $('#themeToggle'),
+      historyBtn: $('#historyBtn'),
+      modal: $('#modal'),
+      modalImage: $('#modalImage'),
+      modalClose: $('#modalClose')
     };
-    let savedImages = JSON.parse(localStorage.getItem('artifact_images') || '[]');
 
-    // Elements
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
-    const titleInput = document.getElementById('title');
-    const subtitleInput = document.getElementById('subtitle');
-    const summaryTitleInput = document.getElementById('summaryTitle');
-    const summaryTextInput = document.getElementById('summaryText');
-    const keywordsInput = document.getElementById('keywords');
-    const keywordList = document.getElementById('keywordList');
-    const fontSizeSlider = document.getElementById('fontSize');
-    const fontSizeValue = document.getElementById('fontSizeValue');
-    const generateBtn = document.getElementById('generateBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const galleryGrid = document.getElementById('galleryGrid');
-    const modal = document.getElementById('modal');
-    const modalImage = document.getElementById('modalImage');
-    const modalClose = document.getElementById('modalClose');
-    const clearGalleryBtn = document.getElementById('clearGalleryBtn');
-    const toast = document.getElementById('toast');
+    const ctx = elements.canvas.getContext('2d');
 
-    // Initialize
+    // ===== Initialize =====
     function init() {
+      applyTheme();
+      updateStats();
       setupEventListeners();
-      renderGallery();
-      generateImage();
+      renderHistory();
     }
 
+    function applyTheme() {
+      document.body.setAttribute('data-theme', state.theme);
+      elements.themeToggle.textContent = state.theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    function updateStats() {
+      elements.totalGenerated.textContent = state.stats.totalGenerated;
+
+      // Check streak
+      const today = new Date().toDateString();
+      const lastDate = state.stats.lastGeneratedDate;
+
+      if (lastDate) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (lastDate === today) {
+          // Same day, streak continues
+        } else if (lastDate === yesterday.toDateString()) {
+          // Yesterday, streak continues
+        } else {
+          // Streak broken
+          state.stats.streak = 0;
+        }
+      }
+
+      if (state.stats.streak > 0) {
+        elements.streakBadge.style.display = 'flex';
+        elements.streakDays.textContent = state.stats.streak;
+      }
+    }
+
+    // ===== Event Listeners =====
     function setupEventListeners() {
-      // Tabs
-      tabs.forEach(tab => {
+      // Character count
+      elements.inputText.addEventListener('input', () => {
+        elements.charCount.textContent = elements.inputText.value.length;
+      });
+
+      // Generate button
+      elements.generateBtn.addEventListener('click', generateAll);
+
+      // Suggestion chips
+      $$('.suggestion-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const currentText = elements.inputText.value.trim();
+          const newText = chip.dataset.text;
+          elements.inputText.value = currentText ? `${currentText}\n・${newText}` : `・${newText}`;
+          elements.charCount.textContent = elements.inputText.value.length;
+        });
+      });
+
+      // Image tabs
+      $$('.image-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-          currentTab = tab.dataset.tab;
-          tabs.forEach(t => t.classList.remove('active'));
+          $$('.image-tab').forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
-          tabContents.forEach(c => c.classList.remove('active'));
-          document.getElementById(`tab-${currentTab}`).classList.add('active');
-
-          // Resize canvas based on tab
-          if (currentTab === 'thumbnail') {
-            canvas.width = 1200;
-            canvas.height = 630;
-          } else {
-            canvas.width = 1200;
-            canvas.height = 800;
-          }
+          state.currentImageTab = tab.dataset.tab;
+          elements.canvas.width = state.currentImageTab === 'thumbnail' ? 1200 : 1200;
+          elements.canvas.height = state.currentImageTab === 'thumbnail' ? 630 : 800;
           generateImage();
         });
       });
 
-      // Style buttons
-      document.querySelectorAll('#tab-thumbnail .style-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('#tab-thumbnail .style-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          thumbnailSettings.style = btn.dataset.style;
+      // Style options
+      $$('.style-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          $$('.style-option').forEach(o => o.classList.remove('active'));
+          opt.classList.add('active');
+          state.currentStyle = opt.dataset.style;
           generateImage();
         });
       });
 
-      // Layout buttons
-      document.querySelectorAll('#tab-supplement .style-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('#tab-supplement .style-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          supplementSettings.layout = btn.dataset.layout;
+      // Color options
+      $$('.color-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          $$('.color-option').forEach(o => o.classList.remove('active'));
+          opt.classList.add('active');
+          state.currentColors = opt.dataset.colors.split(',');
           generateImage();
         });
       });
 
-      // Color presets
-      document.querySelectorAll('#tab-thumbnail .color-preset').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('#tab-thumbnail .color-preset').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          thumbnailSettings.colors = btn.dataset.colors.split(',');
-          generateImage();
-        });
+      // Theme toggle
+      elements.themeToggle.addEventListener('click', () => {
+        state.theme = state.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('articraft_theme', state.theme);
+        applyTheme();
       });
 
-      document.querySelectorAll('#tab-supplement .color-preset').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('#tab-supplement .color-preset').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          supplementSettings.colors = btn.dataset.colors.split(',');
-          generateImage();
-        });
+      // History toggle
+      elements.historyBtn.addEventListener('click', () => {
+        const isVisible = elements.historySection.style.display !== 'none';
+        elements.historySection.style.display = isVisible ? 'none' : 'block';
       });
 
-      // Icon buttons
-      document.querySelectorAll('.icon-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          thumbnailSettings.icon = btn.dataset.icon;
-          generateImage();
-        });
+      // Modal
+      elements.modalClose.addEventListener('click', () => {
+        elements.modal.classList.remove('active');
       });
-
-      // Font size slider
-      fontSizeSlider.addEventListener('input', () => {
-        thumbnailSettings.fontSize = parseInt(fontSizeSlider.value);
-        fontSizeValue.textContent = `${fontSizeSlider.value}px`;
-        generateImage();
-      });
-
-      // Text inputs
-      [titleInput, subtitleInput, summaryTitleInput, summaryTextInput].forEach(input => {
-        input.addEventListener('input', generateImage);
-      });
-
-      // Keywords
-      keywordsInput.addEventListener('input', () => {
-        updateKeywordList();
-        generateImage();
-      });
-
-      // Buttons
-      generateBtn.addEventListener('click', generateImage);
-      saveBtn.addEventListener('click', saveImage);
-      downloadBtn.addEventListener('click', downloadImage);
-      copyBtn.addEventListener('click', copyImage);
-      clearGalleryBtn.addEventListener('click', clearGallery);
-      modalClose.addEventListener('click', () => modal.classList.remove('active'));
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('active');
+      elements.modal.addEventListener('click', (e) => {
+        if (e.target === elements.modal) {
+          elements.modal.classList.remove('active');
+        }
       });
     }
 
-    function updateKeywordList() {
-      const keywords = keywordsInput.value.split(',').map(k => k.trim()).filter(k => k);
-      keywordList.innerHTML = keywords.map(k => `
-        <span class="keyword-tag">${k}</span>
-      `).join('');
+    // ===== Generation Logic =====
+    async function generateAll() {
+      const text = elements.inputText.value.trim();
+      if (!text) {
+        showToast('イイタイコトを入力してください', 'warning');
+        return;
+      }
+
+      elements.generateBtn.disabled = true;
+      elements.outputPlaceholder.style.display = 'none';
+      elements.loadingState.classList.add('active');
+      elements.articleOutput.classList.remove('visible');
+      elements.imageSection.classList.remove('visible');
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      state.generatedArticle = generateArticleFromInput(text);
+
+      // Update UI
+      elements.articleTitle.textContent = state.generatedArticle.title;
+      elements.articleContent.innerHTML = formatArticleContent(state.generatedArticle.content);
+      elements.articleDate.textContent = new Date().toLocaleDateString('ja-JP');
+      elements.articleWordCount.textContent = state.generatedArticle.content.length;
+
+      elements.loadingState.classList.remove('active');
+      elements.articleOutput.classList.add('visible');
+      elements.imageSection.classList.add('visible');
+
+      generateImage();
+      elements.generateBtn.disabled = false;
+
+      // Update stats
+      updateGenerationStats();
+
+      showToast('記事と画像を生成しました');
     }
 
-    // Image Generation
+    function updateGenerationStats() {
+      const today = new Date().toDateString();
+
+      if (state.stats.lastGeneratedDate !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (state.stats.lastGeneratedDate === yesterday.toDateString()) {
+          state.stats.streak++;
+        } else {
+          state.stats.streak = 1;
+        }
+        state.stats.lastGeneratedDate = today;
+      }
+
+      state.stats.totalGenerated++;
+      localStorage.setItem('articraft_stats', JSON.stringify(state.stats));
+      updateStats();
+    }
+
+    function generateArticleFromInput(input) {
+      const keywords = extractKeywords(input);
+
+      const titleTemplates = [
+        `${keywords[0] || '悩み'}から解放される方法`,
+        `${keywords[0] || '日常'}を変える小さな習慣`,
+        `【保存版】${keywords[0] || '心'}が軽くなる考え方`,
+        `${keywords[0] || 'ストレス'}に疲れたあなたへ贈る言葉`,
+        `もう${keywords[0] || '悩み'}で悩まない！自分らしく生きるコツ`
+      ];
+      const title = titleTemplates[Math.floor(Math.random() * titleTemplates.length)];
+
+      const intro = generateIntro(input, keywords);
+      const body = generateBody(input, keywords);
+      const conclusion = generateConclusion(keywords);
+
+      const content = `${intro}\n\n## なぜ${keywords[0] || 'このこと'}で悩むのか\n\n${body}\n\n## 明日からできる小さな一歩\n\n${conclusion}`;
+
+      return { title, content, keywords };
+    }
+
+    function extractKeywords(text) {
+      const commonWords = ['完璧主義', 'SNS', '疲れ', '落ち込む', '気楽', '不安', 'ストレス', '比較', '自分', '生きる', '幸せ', '人生', '仕事', '人間関係', '自信'];
+      const found = commonWords.filter(word => text.includes(word));
+
+      if (found.length === 0) {
+        const lines = text.split('\n').filter(l => l.trim());
+        if (lines.length > 0) {
+          const firstLine = lines[0].replace(/^[・\-\*]\s*/, '');
+          return [firstLine.substring(0, 10)];
+        }
+        return ['日常の悩み'];
+      }
+      return found;
+    }
+
+    function generateIntro(input, keywords) {
+      const intros = [
+        `最近、${keywords[0] || '何か'}に疲れていませんか？\n\n実は、多くの人が同じような悩みを抱えています。でも大丈夫。この記事を読み終わる頃には、きっと心が少し軽くなっているはずです。`,
+        `「${keywords[0] || 'このままでいいのかな'}...」\n\nそんな風に感じているあなた、まずは深呼吸してみてください。あなたは決して一人じゃありません。`,
+        `こんにちは。今日は${keywords[0] || '日々の悩み'}について、一緒に考えてみませんか？\n\n完璧じゃなくていい。そのままのあなたで大丈夫なんです。`
+      ];
+      return intros[Math.floor(Math.random() * intros.length)];
+    }
+
+    function generateBody(input, keywords) {
+      let body = '';
+
+      if (keywords.includes('完璧主義')) {
+        body += `完璧を求めることは、決して悪いことではありません。でも、それが自分を苦しめているなら、少し立ち止まってみましょう。\n\n「80点でOK」という考え方を試してみてください。意外と、それでも周りは認めてくれるものです。\n\n`;
+      }
+
+      if (keywords.includes('SNS') || input.includes('キラキラ')) {
+        body += `SNSで見かける「キラキラした投稿」は、その人の人生のほんの一部。誰だって見せたくない部分はあります。\n\n比較するなら、昨日の自分と今日の自分。小さな成長を見つけてみませんか？\n\n`;
+      }
+
+      if (keywords.includes('疲れ') || keywords.includes('ストレス')) {
+        body += `心が疲れているときは、無理に頑張らなくていいんです。\n\n好きな音楽を聴いたり、温かい飲み物を飲んだり。小さな「心地よさ」を大切にしてみてください。\n\n`;
+      }
+
+      if (keywords.includes('自信')) {
+        body += `自信がないと感じるのは、あなたが真剣に物事と向き合っている証拠です。\n\n小さな成功体験を積み重ねることで、自信は少しずつ育っていきます。\n\n`;
+      }
+
+      if (keywords.includes('人間関係')) {
+        body += `人間関係の悩みは、誰もが抱えるもの。大切なのは、すべての人に好かれようとしないこと。\n\n自分を大切にしてくれる人との関係を育てていきましょう。\n\n`;
+      }
+
+      if (body === '') {
+        body = `あなたが感じていること、それは自然な感情です。\n\n大切なのは、その感情を否定せずに受け入れること。「今、こう感じているんだな」と、優しく自分に声をかけてあげてください。\n\n`;
+      }
+
+      return body;
+    }
+
+    function generateConclusion(keywords) {
+      const conclusions = [
+        `最後に、ひとつだけ覚えておいてほしいことがあります。\n\n**あなたは、そのままで十分素敵です。**\n\n完璧じゃなくていい。失敗してもいい。それでも前に進もうとしている、その姿勢がすでに素晴らしいんです。\n\n明日から、ほんの少しだけ自分に優しくしてみませんか？`,
+        `変わりたいと思ったその瞬間から、あなたはもう変わり始めています。\n\n焦らなくて大丈夫。一歩ずつ、自分のペースで進んでいきましょう。\n\n**今日も一日、お疲れさまでした。**`,
+        `この記事が、あなたの心に少しでも届いていたら嬉しいです。\n\n辛いときは辛いと言っていい。休みたいときは休んでいい。\n\n**あなたの幸せを、心から応援しています。**`
+      ];
+      return conclusions[Math.floor(Math.random() * conclusions.length)];
+    }
+
+    function formatArticleContent(content) {
+      return content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/## (.*)/g, '<h2>$1</h2>')
+        .replace(/\n/g, '<br>');
+    }
+
+    // ===== Image Generation =====
     function generateImage() {
-      if (currentTab === 'thumbnail') {
+      if (state.currentImageTab === 'thumbnail') {
         generateThumbnail();
       } else {
         generateSupplement();
@@ -977,438 +1492,199 @@
     }
 
     function generateThumbnail() {
-      const { style, colors, fontSize, icon } = thumbnailSettings;
-      const title = titleInput.value || 'タイトルを入力';
-      const subtitle = subtitleInput.value;
+      ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+      drawBackground();
 
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const title = state.generatedArticle.title || 'タイトルが入ります';
 
-      // Draw background based on style
-      switch (style) {
-        case 'gradient':
-          drawGradientBackground(colors);
-          break;
-        case 'geometric':
-          drawGeometricBackground(colors);
-          break;
-        case 'minimal':
-          drawMinimalBackground(colors);
-          break;
-        case 'wave':
-          drawWaveBackground(colors);
-          break;
-        case 'particles':
-          drawParticlesBackground(colors);
-          break;
-        case 'mesh':
-          drawMeshBackground(colors);
-          break;
-      }
-
-      // Draw icon
-      if (icon) {
-        ctx.font = '120px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(icon, canvas.width / 2, 180);
-      }
-
-      // Draw title
-      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif`;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-
-      // Text shadow
       ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      ctx.shadowBlur = 10;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
-      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 4;
 
-      // Wrap text
-      const maxWidth = canvas.width - 120;
-      const lines = wrapText(title, maxWidth, fontSize);
-      const lineHeight = fontSize * 1.3;
-      const startY = icon ? canvas.height / 2 + 40 : canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+      const lines = wrapText(title, elements.canvas.width - 160, 52);
+      const lineHeight = 68;
+      const startY = elements.canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
 
       lines.forEach((line, i) => {
-        ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
+        ctx.fillText(line, elements.canvas.width / 2, startY + i * lineHeight);
       });
 
-      // Draw subtitle
-      if (subtitle) {
-        ctx.font = `500 ${fontSize * 0.5}px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif`;
-        ctx.shadowBlur = 5;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.fillText(subtitle, canvas.width / 2, startY + lines.length * lineHeight + 20);
-      }
-
-      // Reset shadow
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
+
+      // Brand watermark
+      ctx.font = '500 18px -apple-system, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.textAlign = 'right';
+      ctx.fillText('Articraft', elements.canvas.width - 40, elements.canvas.height - 30);
     }
 
     function generateSupplement() {
-      const { layout, colors } = supplementSettings;
-      const title = summaryTitleInput.value || '記事のポイント';
-      const text = summaryTextInput.value || '要約テキストを入力してください';
-      const keywords = keywordsInput.value.split(',').map(k => k.trim()).filter(k => k);
+      ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+      drawBackground();
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Background
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Decorative elements
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      for (let i = 0; i < 5; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const r = 100 + Math.random() * 200;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Content card
-      const cardPadding = 60;
-      const cardX = cardPadding;
-      const cardY = cardPadding;
-      const cardWidth = canvas.width - cardPadding * 2;
-      const cardHeight = canvas.height - cardPadding * 2;
+      const cardX = 60;
+      const cardY = 60;
+      const cardWidth = elements.canvas.width - 120;
+      const cardHeight = elements.canvas.height - 120;
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      roundRect(ctx, cardX, cardY, cardWidth, cardHeight, 24);
+      roundRect(ctx, cardX, cardY, cardWidth, cardHeight, 20);
 
-      // Title
-      ctx.fillStyle = colors[0];
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
+      ctx.fillStyle = state.currentColors[0];
+      ctx.font = 'bold 40px -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(title, cardX + 50, cardY + 50);
+      ctx.fillText('📌 記事のポイント', cardX + 50, cardY + 45);
 
-      // Divider
-      ctx.fillStyle = colors[0];
-      ctx.fillRect(cardX + 50, cardY + 120, 100, 4);
-
-      // Content based on layout
-      switch (layout) {
-        case 'list':
-          drawListLayout(text, cardX, cardY, colors);
-          break;
-        case 'card':
-          drawCardLayout(text, cardX, cardY, colors);
-          break;
-        case 'infographic':
-          drawInfographicLayout(text, cardX, cardY, colors);
-          break;
-      }
-
-      // Keywords
-      if (keywords.length > 0) {
-        const keywordY = cardY + cardHeight - 80;
-        let keywordX = cardX + 50;
-        ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
-
-        keywords.forEach(keyword => {
-          const width = ctx.measureText(keyword).width + 24;
-          ctx.fillStyle = colors[0] + '20';
-          roundRect(ctx, keywordX, keywordY, width, 36, 18);
-          ctx.fillStyle = colors[0];
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(keyword, keywordX + width / 2, keywordY + 18);
-          keywordX += width + 12;
-        });
-      }
-    }
-
-    function drawListLayout(text, cardX, cardY, colors) {
-      const lines = text.split('\n').filter(l => l.trim());
-      ctx.font = '500 28px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-
-      lines.forEach((line, i) => {
-        const y = cardY + 160 + i * 60;
-        const cleanLine = line.replace(/^[•\-\*]\s*/, '');
-
-        // Bullet point
-        ctx.fillStyle = colors[0];
-        ctx.beginPath();
-        ctx.arc(cardX + 70, y + 14, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Text
-        ctx.fillStyle = '#1e293b';
-        ctx.fillText(cleanLine, cardX + 100, y);
-      });
-    }
-
-    function drawCardLayout(text, cardX, cardY, colors) {
-      const lines = text.split('\n').filter(l => l.trim());
-      const cardWidth = 320;
-      const cardHeight = 120;
-      const gap = 24;
-      const startX = cardX + 50;
-      const startY = cardY + 160;
-
-      lines.slice(0, 6).forEach((line, i) => {
-        const col = i % 3;
-        const row = Math.floor(i / 3);
-        const x = startX + col * (cardWidth + gap);
-        const y = startY + row * (cardHeight + gap);
-        const cleanLine = line.replace(/^[•\-\*]\s*/, '');
-
-        // Card background
-        ctx.fillStyle = colors[0] + '15';
-        roundRect(ctx, x, y, cardWidth, cardHeight, 12);
-
-        // Card border
-        ctx.strokeStyle = colors[0] + '30';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        roundRectPath(ctx, x, y, cardWidth, cardHeight, 12);
-        ctx.stroke();
-
-        // Text
-        ctx.fillStyle = '#1e293b';
-        ctx.font = '500 22px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        const wrappedLines = wrapText(cleanLine, cardWidth - 40, 22);
-        wrappedLines.forEach((l, li) => {
-          ctx.fillText(l, x + cardWidth / 2, y + cardHeight / 2 + (li - (wrappedLines.length - 1) / 2) * 28);
-        });
-      });
-    }
-
-    function drawInfographicLayout(text, cardX, cardY, colors) {
-      const lines = text.split('\n').filter(l => l.trim());
-      const centerX = cardX + (canvas.width - cardX * 2) / 2;
-      const centerY = cardY + 380;
-      const radius = 180;
-
-      lines.slice(0, 6).forEach((line, i) => {
-        const angle = (i / Math.min(lines.length, 6)) * Math.PI * 2 - Math.PI / 2;
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-        const cleanLine = line.replace(/^[•\-\*]\s*/, '');
-
-        // Circle
-        ctx.fillStyle = colors[0];
-        ctx.beginPath();
-        ctx.arc(x, y, 50, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Number
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 28px -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText((i + 1).toString(), x, y);
-
-        // Line to center
-        ctx.strokeStyle = colors[0] + '40';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-
-        // Label
-        const labelX = centerX + Math.cos(angle) * (radius + 80);
-        const labelY = centerY + Math.sin(angle) * (radius + 80);
-        ctx.fillStyle = '#1e293b';
-        ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
-        ctx.fillText(cleanLine.substring(0, 15), labelX, labelY);
-      });
-
-      // Center circle
-      ctx.fillStyle = colors[1];
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 20px -apple-system, sans-serif';
-      ctx.fillText('POINT', centerX, centerY);
-    }
-
-    // Background styles
-    function drawGradientBackground(colors) {
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
+      const gradient = ctx.createLinearGradient(cardX + 50, 0, cardX + 200, 0);
+      gradient.addColorStop(0, state.currentColors[0]);
+      gradient.addColorStop(1, state.currentColors[1]);
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(cardX + 50, cardY + 105, 100, 4);
 
-      // Add subtle pattern
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-      for (let i = 0; i < 20; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const r = 50 + Math.random() * 150;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
+      const keywords = state.generatedArticle.keywords.length > 0
+        ? state.generatedArticle.keywords
+        : ['ポイント1', 'ポイント2', 'ポイント3'];
 
-    function drawGeometricBackground(colors) {
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Triangles
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      for (let i = 0; i < 15; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const size = 50 + Math.random() * 150;
-        ctx.beginPath();
-        ctx.moveTo(x, y - size);
-        ctx.lineTo(x + size, y + size);
-        ctx.lineTo(x - size, y + size);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // Circles
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 10; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const r = 30 + Math.random() * 100;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
-
-    function drawMinimalBackground(colors) {
-      ctx.fillStyle = colors[0];
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Single accent shape
-      ctx.fillStyle = colors[1];
-      ctx.beginPath();
-      ctx.arc(canvas.width - 150, canvas.height - 150, 250, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Line accents
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(60, 60);
-      ctx.lineTo(60, 200);
-      ctx.stroke();
-    }
-
-    function drawWaveBackground(colors) {
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Waves
-      for (let w = 0; w < 4; w++) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + w * 0.02})`;
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height);
-        for (let x = 0; x <= canvas.width; x += 10) {
-          const y = canvas.height - 100 - w * 80 + Math.sin(x * 0.01 + w) * 50;
-          ctx.lineTo(x, y);
-        }
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-
-    function drawParticlesBackground(colors) {
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Particles
-      for (let i = 0; i < 100; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const r = 2 + Math.random() * 6;
-        const alpha = 0.1 + Math.random() * 0.3;
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Connecting lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
-      const points = Array.from({length: 20}, () => ({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height
-      }));
-      points.forEach((p1, i) => {
-        points.slice(i + 1).forEach(p2 => {
-          const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-          if (dist < 300) {
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        });
-      });
-    }
-
-    function drawMeshBackground(colors) {
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Mesh gradient blobs
-      const blobs = [
-        { x: canvas.width * 0.2, y: canvas.height * 0.3, r: 300, color: colors[1] },
-        { x: canvas.width * 0.8, y: canvas.height * 0.7, r: 250, color: colors[0] },
-        { x: canvas.width * 0.5, y: canvas.height * 0.5, r: 200, color: 'rgba(255,255,255,0.2)' }
+      const points = [
+        { emoji: '💡', text: `${keywords[0] || '心を軽くする'}考え方` },
+        { emoji: '🎯', text: '無理しない生き方のコツ' },
+        { emoji: '✨', text: '明日から始められる習慣' }
       ];
 
-      blobs.forEach(blob => {
-        const gradient = ctx.createRadialGradient(blob.x, blob.y, 0, blob.x, blob.y, blob.r);
-        gradient.addColorStop(0, blob.color + '60');
-        gradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(blob.x, blob.y, blob.r, 0, Math.PI * 2);
-        ctx.fill();
+      points.forEach((point, i) => {
+        const y = cardY + 160 + i * 110;
+
+        ctx.fillStyle = state.currentColors[0] + '12';
+        roundRect(ctx, cardX + 50, y, cardWidth - 100, 85, 14);
+
+        ctx.font = '44px sans-serif';
+        ctx.fillText(point.emoji, cardX + 75, y + 18);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '500 26px -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif';
+        ctx.fillText(point.text, cardX + 140, y + 32);
+      });
+
+      // Keywords at bottom
+      ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif';
+      let keywordX = cardX + 50;
+      const keywordY = cardY + cardHeight - 70;
+
+      keywords.slice(0, 4).forEach(keyword => {
+        const width = ctx.measureText(keyword).width + 28;
+
+        ctx.fillStyle = state.currentColors[0] + '18';
+        roundRect(ctx, keywordX, keywordY, width, 36, 18);
+
+        ctx.fillStyle = state.currentColors[0];
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(keyword, keywordX + width / 2, keywordY + 18);
+
+        keywordX += width + 10;
+        ctx.textAlign = 'left';
       });
     }
 
-    // Utility functions
+    function drawBackground() {
+      const { width, height } = elements.canvas;
+
+      switch (state.currentStyle) {
+        case 'gradient':
+          const gradient = ctx.createLinearGradient(0, 0, width, height);
+          gradient.addColorStop(0, state.currentColors[0]);
+          gradient.addColorStop(1, state.currentColors[1]);
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, width, height);
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+          for (let i = 0; i < 12; i++) {
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            const r = 60 + Math.random() * 120;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+
+        case 'geometric':
+          const geoGradient = ctx.createLinearGradient(0, 0, width, height);
+          geoGradient.addColorStop(0, state.currentColors[0]);
+          geoGradient.addColorStop(1, state.currentColors[1]);
+          ctx.fillStyle = geoGradient;
+          ctx.fillRect(0, 0, width, height);
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+          for (let i = 0; i < 15; i++) {
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            const size = 40 + Math.random() * 80;
+            ctx.beginPath();
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x + size, y + size);
+            ctx.lineTo(x - size, y + size);
+            ctx.closePath();
+            ctx.fill();
+          }
+          break;
+
+        case 'wave':
+          const waveGradient = ctx.createLinearGradient(0, 0, width, height);
+          waveGradient.addColorStop(0, state.currentColors[0]);
+          waveGradient.addColorStop(1, state.currentColors[1]);
+          ctx.fillStyle = waveGradient;
+          ctx.fillRect(0, 0, width, height);
+
+          for (let w = 0; w < 4; w++) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.025 + w * 0.015})`;
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            for (let x = 0; x <= width; x += 8) {
+              const y = height - 70 - w * 50 + Math.sin(x * 0.007 + w * 0.8) * 35;
+              ctx.lineTo(x, y);
+            }
+            ctx.lineTo(width, height);
+            ctx.closePath();
+            ctx.fill();
+          }
+          break;
+
+        case 'minimal':
+          ctx.fillStyle = state.currentColors[0];
+          ctx.fillRect(0, 0, width, height);
+
+          ctx.fillStyle = state.currentColors[1];
+          ctx.beginPath();
+          ctx.arc(width - 80, height - 80, 180, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(50, 50);
+          ctx.lineTo(50, 150);
+          ctx.stroke();
+          break;
+      }
+    }
+
     function wrapText(text, maxWidth, fontSize) {
-      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif`;
-      const words = text.split('');
+      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif`;
+      const chars = text.split('');
       const lines = [];
       let currentLine = '';
 
-      words.forEach(char => {
+      chars.forEach(char => {
         const testLine = currentLine + char;
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine) {
+        if (ctx.measureText(testLine).width > maxWidth && currentLine) {
           lines.push(currentLine);
           currentLine = char;
         } else {
@@ -1421,11 +1697,6 @@
 
     function roundRect(ctx, x, y, width, height, radius) {
       ctx.beginPath();
-      roundRectPath(ctx, x, y, width, height, radius);
-      ctx.fill();
-    }
-
-    function roundRectPath(ctx, x, y, width, height, radius) {
       ctx.moveTo(x + radius, y);
       ctx.lineTo(x + width - radius, y);
       ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
@@ -1436,98 +1707,104 @@
       ctx.lineTo(x, y + radius);
       ctx.quadraticCurveTo(x, y, x + radius, y);
       ctx.closePath();
+      ctx.fill();
     }
 
-    // Save/Export functions
-    function saveImage() {
-      const dataUrl = canvas.toDataURL('image/png');
-      const title = currentTab === 'thumbnail'
-        ? titleInput.value || 'Untitled'
-        : summaryTitleInput.value || 'Untitled';
-
-      savedImages.unshift({
-        id: crypto.randomUUID(),
-        type: currentTab,
-        title: title,
-        dataUrl: dataUrl,
-        createdAt: new Date().toISOString()
+    // ===== Actions =====
+    function copyArticle() {
+      const text = `${state.generatedArticle.title}\n\n${state.generatedArticle.content}`;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('記事をコピーしました');
       });
+    }
 
-      // Keep only 50 most recent
-      if (savedImages.length > 50) {
-        savedImages = savedImages.slice(0, 50);
+    function regenerate() {
+      generateAll();
+    }
+
+    function saveToHistory() {
+      const dataUrl = elements.canvas.toDataURL('image/png');
+      const item = {
+        id: crypto.randomUUID(),
+        title: state.generatedArticle.title,
+        content: state.generatedArticle.content,
+        thumbnailUrl: dataUrl,
+        createdAt: new Date().toISOString()
+      };
+
+      state.history.unshift(item);
+      if (state.history.length > 30) {
+        state.history = state.history.slice(0, 30);
       }
 
-      localStorage.setItem('artifact_images', JSON.stringify(savedImages));
-      renderGallery();
-      showToast('画像を保存しました');
+      localStorage.setItem('articraft_history', JSON.stringify(state.history));
+      renderHistory();
+      showToast('履歴に保存しました');
     }
 
     function downloadImage() {
       const link = document.createElement('a');
-      link.download = `artifact-${currentTab}-${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
+      const type = state.currentImageTab === 'thumbnail' ? 'thumbnail' : 'supplement';
+      link.download = `articraft-${type}-${Date.now()}.png`;
+      link.href = elements.canvas.toDataURL('image/png');
       link.click();
-      showToast('ダウンロードを開始しました');
+      showToast('画像をダウンロードしました');
     }
 
     async function copyImage() {
       try {
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
-        showToast('クリップボードにコピーしました');
+        const blob = await new Promise(resolve => elements.canvas.toBlob(resolve, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('画像をコピーしました');
       } catch (err) {
-        showToast('コピーに失敗しました');
+        showToast('コピーに失敗しました', 'error');
       }
     }
 
-    function renderGallery() {
-      if (savedImages.length === 0) {
-        galleryGrid.innerHTML = '<div class="empty-gallery">保存した画像はありません</div>';
+    function renderHistory() {
+      if (state.history.length === 0) {
+        elements.historyGrid.innerHTML = '<div class="empty-history">履歴がありません</div>';
         return;
       }
 
-      galleryGrid.innerHTML = savedImages.map(img => `
-        <div class="gallery-item" data-id="${img.id}">
-          <img src="${img.dataUrl}" alt="${img.title}">
-          <div class="gallery-item-overlay">
-            <span class="gallery-item-title">${img.title}</span>
+      elements.historyGrid.innerHTML = state.history.map(item => `
+        <div class="history-item" data-id="${item.id}">
+          <img src="${item.thumbnailUrl}" alt="${item.title}">
+          <div class="history-item-overlay">
+            <div class="history-item-title">${item.title}</div>
+            <div class="history-item-date">${new Date(item.createdAt).toLocaleDateString('ja-JP')}</div>
           </div>
-          <button class="gallery-item-delete" onclick="deleteImage('${img.id}')">×</button>
+          <button class="history-item-delete" onclick="deleteHistoryItem('${item.id}')">×</button>
         </div>
       `).join('');
 
-      // Add click handlers for modal
-      document.querySelectorAll('.gallery-item img').forEach(img => {
+      $$('.history-item img').forEach(img => {
         img.addEventListener('click', () => {
-          modalImage.src = img.src;
-          modal.classList.add('active');
+          elements.modalImage.src = img.src;
+          elements.modal.classList.add('active');
         });
       });
     }
 
-    function deleteImage(id) {
-      if (!confirm('この画像を削除しますか？')) return;
-      savedImages = savedImages.filter(img => img.id !== id);
-      localStorage.setItem('artifact_images', JSON.stringify(savedImages));
-      renderGallery();
-      showToast('画像を削除しました');
+    function deleteHistoryItem(id) {
+      state.history = state.history.filter(item => item.id !== id);
+      localStorage.setItem('articraft_history', JSON.stringify(state.history));
+      renderHistory();
+      showToast('履歴を削除しました');
     }
 
-    function clearGallery() {
-      if (!confirm('すべての保存済み画像を削除しますか？')) return;
-      savedImages = [];
-      localStorage.setItem('artifact_images', JSON.stringify(savedImages));
-      renderGallery();
-      showToast('すべての画像を削除しました');
+    function clearHistory() {
+      if (!confirm('すべての履歴を削除しますか？')) return;
+      state.history = [];
+      localStorage.setItem('articraft_history', JSON.stringify(state.history));
+      renderHistory();
+      showToast('すべての履歴を削除しました');
     }
 
-    function showToast(message) {
-      toast.textContent = message;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2500);
+    function showToast(message, type = 'success') {
+      elements.toastMessage.textContent = message;
+      elements.toast.classList.add('show');
+      setTimeout(() => elements.toast.classList.remove('show'), 2500);
     }
 
     // Initialize
