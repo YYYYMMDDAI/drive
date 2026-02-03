@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artifact Image Generator - 記事画像自動生成</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-light: #f8fafc;
+      --bg-dark: #0f172a;
+      --card-light: #ffffff;
+      --card-dark: #1e293b;
+      --text-light: #1e293b;
+      --text-dark: #e2e8f0;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --border-light: #e2e8f0;
+      --border-dark: #334155;
+      --success: #10b981;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: var(--bg-light);
+      color: var(--text-light);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+      }
+      .card {
+        background: var(--card-dark);
+        border-color: var(--border-dark);
+      }
+      input, textarea, select {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+        border-color: var(--border-dark);
+      }
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      opacity: 0.9;
+      font-size: 0.95rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .layout {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 1024px) {
+      .layout {
+        grid-template-columns: 400px 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-light);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title::before {
+      content: '';
+      width: 4px;
+      height: 1.2em;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: inherit;
+      opacity: 0.8;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+
+    .style-btn {
+      padding: 0.6rem;
+      border: 2px solid var(--border-light);
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      color: inherit;
+    }
+
+    .style-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .style-btn.active {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent);
+    }
+
+    .color-presets {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .color-preset {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .color-preset:hover {
+      transform: scale(1.1);
+    }
+
+    .color-preset.active {
+      border-color: var(--text-light);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .color-preset.active {
+        border-color: var(--text-dark);
+      }
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .slider-group input[type="range"] {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      background: var(--border-light);
+      border-radius: 3px;
+      padding: 0;
+      border: none;
+    }
+
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .slider-value {
+      min-width: 3rem;
+      text-align: right;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .preview-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .preview-card {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .preview-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      background: repeating-conic-gradient(#e5e5e5 0% 25%, white 0% 50%) 50% / 20px 20px;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .canvas-wrapper {
+        background: repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50% / 20px 20px;
+      }
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      background: var(--border-light);
+      padding: 0.25rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tabs {
+        background: var(--border-dark);
+      }
+    }
+
+    .tab {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: inherit;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      background: var(--card-light);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tab.active {
+        background: var(--card-dark);
+      }
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .keyword-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .keyword-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.35rem 0.75rem;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .keyword-tag button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      font-size: 1rem;
+      line-height: 1;
+      opacity: 0.7;
+    }
+
+    .keyword-tag button:hover {
+      opacity: 1;
+    }
+
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.5rem;
+    }
+
+    .icon-btn {
+      aspect-ratio: 1;
+      border: 2px solid var(--border-light);
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 1.25rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .icon-btn.active {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    .gallery-section {
+      margin-top: 2rem;
+    }
+
+    .gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .gallery-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .gallery-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      aspect-ratio: 16/9;
+      background: var(--border-light);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+
+    .gallery-item:hover img {
+      transform: scale(1.05);
+    }
+
+    .gallery-item-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex;
+      align-items: flex-end;
+      padding: 0.75rem;
+    }
+
+    .gallery-item:hover .gallery-item-overlay {
+      opacity: 1;
+    }
+
+    .gallery-item-title {
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .gallery-item-delete {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.5);
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s, background 0.2s;
+    }
+
+    .gallery-item:hover .gallery-item-delete {
+      opacity: 1;
+    }
+
+    .gallery-item-delete:hover {
+      background: rgba(239, 68, 68, 0.8);
+    }
+
+    .empty-gallery {
+      text-align: center;
+      padding: 3rem;
+      color: inherit;
+      opacity: 0.5;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.9);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--card-dark);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 2000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      opacity: 0.6;
+      font-size: 0.85rem;
+    }
+
+    /* Animation */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .generating {
+      animation: pulse 1s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎨 Artifact Image Generator</h1>
+    <p>記事の見出し画像・補完画像を自動生成</p>
+  </header>
+
+  <div class="container">
+    <div class="layout">
+      <!-- Input Panel -->
+      <aside class="card">
+        <h2 class="card-title">入力設定</h2>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="thumbnail">サムネイル</button>
+          <button class="tab" data-tab="supplement">補完画像</button>
+        </div>
+
+        <!-- Thumbnail Settings -->
+        <div class="tab-content active" id="tab-thumbnail">
+          <div class="form-group">
+            <label for="title">記事タイトル</label>
+            <input type="text" id="title" placeholder="例: AIが変える未来の働き方">
+          </div>
+
+          <div class="form-group">
+            <label for="subtitle">サブタイトル（任意）</label>
+            <input type="text" id="subtitle" placeholder="例: 2025年最新トレンド解説">
+          </div>
+
+          <div class="form-group">
+            <label>スタイル</label>
+            <div class="style-grid">
+              <button class="style-btn active" data-style="gradient">グラデ</button>
+              <button class="style-btn" data-style="geometric">幾何学</button>
+              <button class="style-btn" data-style="minimal">ミニマル</button>
+              <button class="style-btn" data-style="wave">ウェーブ</button>
+              <button class="style-btn" data-style="particles">粒子</button>
+              <button class="style-btn" data-style="mesh">メッシュ</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>カラーテーマ</label>
+            <div class="color-presets">
+              <button class="color-preset active" data-colors="#6366f1,#8b5cf6" style="background: linear-gradient(135deg, #6366f1, #8b5cf6)"></button>
+              <button class="color-preset" data-colors="#10b981,#3b82f6" style="background: linear-gradient(135deg, #10b981, #3b82f6)"></button>
+              <button class="color-preset" data-colors="#f59e0b,#ef4444" style="background: linear-gradient(135deg, #f59e0b, #ef4444)"></button>
+              <button class="color-preset" data-colors="#ec4899,#8b5cf6" style="background: linear-gradient(135deg, #ec4899, #8b5cf6)"></button>
+              <button class="color-preset" data-colors="#14b8a6,#06b6d4" style="background: linear-gradient(135deg, #14b8a6, #06b6d4)"></button>
+              <button class="color-preset" data-colors="#1e293b,#475569" style="background: linear-gradient(135deg, #1e293b, #475569)"></button>
+              <button class="color-preset" data-colors="#dc2626,#991b1b" style="background: linear-gradient(135deg, #dc2626, #991b1b)"></button>
+              <button class="color-preset" data-colors="#7c3aed,#2563eb" style="background: linear-gradient(135deg, #7c3aed, #2563eb)"></button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>フォントサイズ</label>
+            <div class="slider-group">
+              <input type="range" id="fontSize" min="24" max="72" value="42">
+              <span class="slider-value" id="fontSizeValue">42px</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>アイコン（任意）</label>
+            <div class="icon-grid">
+              <button class="icon-btn" data-icon="">なし</button>
+              <button class="icon-btn" data-icon="💡">💡</button>
+              <button class="icon-btn" data-icon="🚀">🚀</button>
+              <button class="icon-btn" data-icon="🔥">🔥</button>
+              <button class="icon-btn" data-icon="✨">✨</button>
+              <button class="icon-btn" data-icon="📱">📱</button>
+              <button class="icon-btn" data-icon="💻">💻</button>
+              <button class="icon-btn" data-icon="🎯">🎯</button>
+              <button class="icon-btn" data-icon="📊">📊</button>
+              <button class="icon-btn" data-icon="🔧">🔧</button>
+              <button class="icon-btn" data-icon="📝">📝</button>
+              <button class="icon-btn" data-icon="🎨">🎨</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supplement Image Settings -->
+        <div class="tab-content" id="tab-supplement">
+          <div class="form-group">
+            <label for="summaryTitle">画像タイトル</label>
+            <input type="text" id="summaryTitle" placeholder="例: 記事のポイント">
+          </div>
+
+          <div class="form-group">
+            <label for="summaryText">要約テキスト</label>
+            <textarea id="summaryText" placeholder="例:&#10;• AIによる業務自動化が加速&#10;• リモートワークの定着&#10;• 新しいスキルの需要"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="keywords">キーワード（カンマ区切り）</label>
+            <input type="text" id="keywords" placeholder="例: AI, 働き方改革, DX">
+            <div class="keyword-list" id="keywordList"></div>
+          </div>
+
+          <div class="form-group">
+            <label>レイアウト</label>
+            <div class="style-grid">
+              <button class="style-btn active" data-layout="list">リスト</button>
+              <button class="style-btn" data-layout="card">カード</button>
+              <button class="style-btn" data-layout="infographic">図解</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>カラーテーマ</label>
+            <div class="color-presets" id="supplementColors">
+              <button class="color-preset active" data-colors="#6366f1,#8b5cf6" style="background: linear-gradient(135deg, #6366f1, #8b5cf6)"></button>
+              <button class="color-preset" data-colors="#10b981,#3b82f6" style="background: linear-gradient(135deg, #10b981, #3b82f6)"></button>
+              <button class="color-preset" data-colors="#f59e0b,#ef4444" style="background: linear-gradient(135deg, #f59e0b, #ef4444)"></button>
+              <button class="color-preset" data-colors="#ec4899,#8b5cf6" style="background: linear-gradient(135deg, #ec4899, #8b5cf6)"></button>
+              <button class="color-preset" data-colors="#14b8a6,#06b6d4" style="background: linear-gradient(135deg, #14b8a6, #06b6d4)"></button>
+              <button class="color-preset" data-colors="#1e293b,#475569" style="background: linear-gradient(135deg, #1e293b, #475569)"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top: 1.5rem;">
+          <button class="btn btn-primary" id="generateBtn">🎨 生成</button>
+          <button class="btn btn-success" id="saveBtn">💾 保存</button>
+        </div>
+      </aside>
+
+      <!-- Preview Panel -->
+      <main class="preview-section">
+        <div class="card preview-card">
+          <div class="preview-header">
+            <span class="preview-label">プレビュー</span>
+            <div class="btn-group">
+              <button class="btn btn-secondary" id="downloadBtn">⬇️ ダウンロード</button>
+              <button class="btn btn-secondary" id="copyBtn">📋 コピー</button>
+            </div>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="canvas" width="1200" height="630"></canvas>
+          </div>
+        </div>
+
+        <!-- Gallery -->
+        <section class="gallery-section card">
+          <div class="gallery-header">
+            <h2 class="card-title">保存した画像</h2>
+            <button class="btn btn-secondary" id="clearGalleryBtn">🗑️ 全削除</button>
+          </div>
+          <div class="gallery-grid" id="galleryGrid">
+            <div class="empty-gallery">保存した画像はありません</div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modalClose">×</button>
+    <div class="modal-content">
+      <img id="modalImage" src="" alt="Preview">
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <footer>
+    Artifact Image Generator | 記事画像自動生成ツール
+  </footer>
+
+  <script>
+    // State
+    let currentTab = 'thumbnail';
+    let thumbnailSettings = {
+      style: 'gradient',
+      colors: ['#6366f1', '#8b5cf6'],
+      fontSize: 42,
+      icon: ''
+    };
+    let supplementSettings = {
+      layout: 'list',
+      colors: ['#6366f1', '#8b5cf6']
+    };
+    let savedImages = JSON.parse(localStorage.getItem('artifact_images') || '[]');
+
+    // Elements
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const titleInput = document.getElementById('title');
+    const subtitleInput = document.getElementById('subtitle');
+    const summaryTitleInput = document.getElementById('summaryTitle');
+    const summaryTextInput = document.getElementById('summaryText');
+    const keywordsInput = document.getElementById('keywords');
+    const keywordList = document.getElementById('keywordList');
+    const fontSizeSlider = document.getElementById('fontSize');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    const generateBtn = document.getElementById('generateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const galleryGrid = document.getElementById('galleryGrid');
+    const modal = document.getElementById('modal');
+    const modalImage = document.getElementById('modalImage');
+    const modalClose = document.getElementById('modalClose');
+    const clearGalleryBtn = document.getElementById('clearGalleryBtn');
+    const toast = document.getElementById('toast');
+
+    // Initialize
+    function init() {
+      setupEventListeners();
+      renderGallery();
+      generateImage();
+    }
+
+    function setupEventListeners() {
+      // Tabs
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          currentTab = tab.dataset.tab;
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          tabContents.forEach(c => c.classList.remove('active'));
+          document.getElementById(`tab-${currentTab}`).classList.add('active');
+
+          // Resize canvas based on tab
+          if (currentTab === 'thumbnail') {
+            canvas.width = 1200;
+            canvas.height = 630;
+          } else {
+            canvas.width = 1200;
+            canvas.height = 800;
+          }
+          generateImage();
+        });
+      });
+
+      // Style buttons
+      document.querySelectorAll('#tab-thumbnail .style-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tab-thumbnail .style-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          thumbnailSettings.style = btn.dataset.style;
+          generateImage();
+        });
+      });
+
+      // Layout buttons
+      document.querySelectorAll('#tab-supplement .style-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tab-supplement .style-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          supplementSettings.layout = btn.dataset.layout;
+          generateImage();
+        });
+      });
+
+      // Color presets
+      document.querySelectorAll('#tab-thumbnail .color-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tab-thumbnail .color-preset').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          thumbnailSettings.colors = btn.dataset.colors.split(',');
+          generateImage();
+        });
+      });
+
+      document.querySelectorAll('#tab-supplement .color-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tab-supplement .color-preset').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          supplementSettings.colors = btn.dataset.colors.split(',');
+          generateImage();
+        });
+      });
+
+      // Icon buttons
+      document.querySelectorAll('.icon-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          thumbnailSettings.icon = btn.dataset.icon;
+          generateImage();
+        });
+      });
+
+      // Font size slider
+      fontSizeSlider.addEventListener('input', () => {
+        thumbnailSettings.fontSize = parseInt(fontSizeSlider.value);
+        fontSizeValue.textContent = `${fontSizeSlider.value}px`;
+        generateImage();
+      });
+
+      // Text inputs
+      [titleInput, subtitleInput, summaryTitleInput, summaryTextInput].forEach(input => {
+        input.addEventListener('input', generateImage);
+      });
+
+      // Keywords
+      keywordsInput.addEventListener('input', () => {
+        updateKeywordList();
+        generateImage();
+      });
+
+      // Buttons
+      generateBtn.addEventListener('click', generateImage);
+      saveBtn.addEventListener('click', saveImage);
+      downloadBtn.addEventListener('click', downloadImage);
+      copyBtn.addEventListener('click', copyImage);
+      clearGalleryBtn.addEventListener('click', clearGallery);
+      modalClose.addEventListener('click', () => modal.classList.remove('active'));
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('active');
+      });
+    }
+
+    function updateKeywordList() {
+      const keywords = keywordsInput.value.split(',').map(k => k.trim()).filter(k => k);
+      keywordList.innerHTML = keywords.map(k => `
+        <span class="keyword-tag">${k}</span>
+      `).join('');
+    }
+
+    // Image Generation
+    function generateImage() {
+      if (currentTab === 'thumbnail') {
+        generateThumbnail();
+      } else {
+        generateSupplement();
+      }
+    }
+
+    function generateThumbnail() {
+      const { style, colors, fontSize, icon } = thumbnailSettings;
+      const title = titleInput.value || 'タイトルを入力';
+      const subtitle = subtitleInput.value;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw background based on style
+      switch (style) {
+        case 'gradient':
+          drawGradientBackground(colors);
+          break;
+        case 'geometric':
+          drawGeometricBackground(colors);
+          break;
+        case 'minimal':
+          drawMinimalBackground(colors);
+          break;
+        case 'wave':
+          drawWaveBackground(colors);
+          break;
+        case 'particles':
+          drawParticlesBackground(colors);
+          break;
+        case 'mesh':
+          drawMeshBackground(colors);
+          break;
+      }
+
+      // Draw icon
+      if (icon) {
+        ctx.font = '120px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(icon, canvas.width / 2, 180);
+      }
+
+      // Draw title
+      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Text shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = '#ffffff';
+
+      // Wrap text
+      const maxWidth = canvas.width - 120;
+      const lines = wrapText(title, maxWidth, fontSize);
+      const lineHeight = fontSize * 1.3;
+      const startY = icon ? canvas.height / 2 + 40 : canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+
+      lines.forEach((line, i) => {
+        ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
+      });
+
+      // Draw subtitle
+      if (subtitle) {
+        ctx.font = `500 ${fontSize * 0.5}px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif`;
+        ctx.shadowBlur = 5;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillText(subtitle, canvas.width / 2, startY + lines.length * lineHeight + 20);
+      }
+
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+    }
+
+    function generateSupplement() {
+      const { layout, colors } = supplementSettings;
+      const title = summaryTitleInput.value || '記事のポイント';
+      const text = summaryTextInput.value || '要約テキストを入力してください';
+      const keywords = keywordsInput.value.split(',').map(k => k.trim()).filter(k => k);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Background
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Decorative elements
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      for (let i = 0; i < 5; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const r = 100 + Math.random() * 200;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Content card
+      const cardPadding = 60;
+      const cardX = cardPadding;
+      const cardY = cardPadding;
+      const cardWidth = canvas.width - cardPadding * 2;
+      const cardHeight = canvas.height - cardPadding * 2;
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      roundRect(ctx, cardX, cardY, cardWidth, cardHeight, 24);
+
+      // Title
+      ctx.fillStyle = colors[0];
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(title, cardX + 50, cardY + 50);
+
+      // Divider
+      ctx.fillStyle = colors[0];
+      ctx.fillRect(cardX + 50, cardY + 120, 100, 4);
+
+      // Content based on layout
+      switch (layout) {
+        case 'list':
+          drawListLayout(text, cardX, cardY, colors);
+          break;
+        case 'card':
+          drawCardLayout(text, cardX, cardY, colors);
+          break;
+        case 'infographic':
+          drawInfographicLayout(text, cardX, cardY, colors);
+          break;
+      }
+
+      // Keywords
+      if (keywords.length > 0) {
+        const keywordY = cardY + cardHeight - 80;
+        let keywordX = cardX + 50;
+        ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
+
+        keywords.forEach(keyword => {
+          const width = ctx.measureText(keyword).width + 24;
+          ctx.fillStyle = colors[0] + '20';
+          roundRect(ctx, keywordX, keywordY, width, 36, 18);
+          ctx.fillStyle = colors[0];
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(keyword, keywordX + width / 2, keywordY + 18);
+          keywordX += width + 12;
+        });
+      }
+    }
+
+    function drawListLayout(text, cardX, cardY, colors) {
+      const lines = text.split('\n').filter(l => l.trim());
+      ctx.font = '500 28px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+
+      lines.forEach((line, i) => {
+        const y = cardY + 160 + i * 60;
+        const cleanLine = line.replace(/^[•\-\*]\s*/, '');
+
+        // Bullet point
+        ctx.fillStyle = colors[0];
+        ctx.beginPath();
+        ctx.arc(cardX + 70, y + 14, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Text
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(cleanLine, cardX + 100, y);
+      });
+    }
+
+    function drawCardLayout(text, cardX, cardY, colors) {
+      const lines = text.split('\n').filter(l => l.trim());
+      const cardWidth = 320;
+      const cardHeight = 120;
+      const gap = 24;
+      const startX = cardX + 50;
+      const startY = cardY + 160;
+
+      lines.slice(0, 6).forEach((line, i) => {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const x = startX + col * (cardWidth + gap);
+        const y = startY + row * (cardHeight + gap);
+        const cleanLine = line.replace(/^[•\-\*]\s*/, '');
+
+        // Card background
+        ctx.fillStyle = colors[0] + '15';
+        roundRect(ctx, x, y, cardWidth, cardHeight, 12);
+
+        // Card border
+        ctx.strokeStyle = colors[0] + '30';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        roundRectPath(ctx, x, y, cardWidth, cardHeight, 12);
+        ctx.stroke();
+
+        // Text
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '500 22px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const wrappedLines = wrapText(cleanLine, cardWidth - 40, 22);
+        wrappedLines.forEach((l, li) => {
+          ctx.fillText(l, x + cardWidth / 2, y + cardHeight / 2 + (li - (wrappedLines.length - 1) / 2) * 28);
+        });
+      });
+    }
+
+    function drawInfographicLayout(text, cardX, cardY, colors) {
+      const lines = text.split('\n').filter(l => l.trim());
+      const centerX = cardX + (canvas.width - cardX * 2) / 2;
+      const centerY = cardY + 380;
+      const radius = 180;
+
+      lines.slice(0, 6).forEach((line, i) => {
+        const angle = (i / Math.min(lines.length, 6)) * Math.PI * 2 - Math.PI / 2;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        const cleanLine = line.replace(/^[•\-\*]\s*/, '');
+
+        // Circle
+        ctx.fillStyle = colors[0];
+        ctx.beginPath();
+        ctx.arc(x, y, 50, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Number
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((i + 1).toString(), x, y);
+
+        // Line to center
+        ctx.strokeStyle = colors[0] + '40';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        // Label
+        const labelX = centerX + Math.cos(angle) * (radius + 80);
+        const labelY = centerY + Math.sin(angle) * (radius + 80);
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif';
+        ctx.fillText(cleanLine.substring(0, 15), labelX, labelY);
+      });
+
+      // Center circle
+      ctx.fillStyle = colors[1];
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px -apple-system, sans-serif';
+      ctx.fillText('POINT', centerX, centerY);
+    }
+
+    // Background styles
+    function drawGradientBackground(colors) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add subtle pattern
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      for (let i = 0; i < 20; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const r = 50 + Math.random() * 150;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawGeometricBackground(colors) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Triangles
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      for (let i = 0; i < 15; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const size = 50 + Math.random() * 150;
+        ctx.beginPath();
+        ctx.moveTo(x, y - size);
+        ctx.lineTo(x + size, y + size);
+        ctx.lineTo(x - size, y + size);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Circles
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 10; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const r = 30 + Math.random() * 100;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function drawMinimalBackground(colors) {
+      ctx.fillStyle = colors[0];
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Single accent shape
+      ctx.fillStyle = colors[1];
+      ctx.beginPath();
+      ctx.arc(canvas.width - 150, canvas.height - 150, 250, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Line accents
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(60, 60);
+      ctx.lineTo(60, 200);
+      ctx.stroke();
+    }
+
+    function drawWaveBackground(colors) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Waves
+      for (let w = 0; w < 4; w++) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + w * 0.02})`;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        for (let x = 0; x <= canvas.width; x += 10) {
+          const y = canvas.height - 100 - w * 80 + Math.sin(x * 0.01 + w) * 50;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function drawParticlesBackground(colors) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Particles
+      for (let i = 0; i < 100; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const r = 2 + Math.random() * 6;
+        const alpha = 0.1 + Math.random() * 0.3;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Connecting lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      const points = Array.from({length: 20}, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height
+      }));
+      points.forEach((p1, i) => {
+        points.slice(i + 1).forEach(p2 => {
+          const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+          if (dist < 300) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        });
+      });
+    }
+
+    function drawMeshBackground(colors) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[1]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Mesh gradient blobs
+      const blobs = [
+        { x: canvas.width * 0.2, y: canvas.height * 0.3, r: 300, color: colors[1] },
+        { x: canvas.width * 0.8, y: canvas.height * 0.7, r: 250, color: colors[0] },
+        { x: canvas.width * 0.5, y: canvas.height * 0.5, r: 200, color: 'rgba(255,255,255,0.2)' }
+      ];
+
+      blobs.forEach(blob => {
+        const gradient = ctx.createRadialGradient(blob.x, blob.y, 0, blob.x, blob.y, blob.r);
+        gradient.addColorStop(0, blob.color + '60');
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(blob.x, blob.y, blob.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Utility functions
+    function wrapText(text, maxWidth, fontSize) {
+      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif`;
+      const words = text.split('');
+      const lines = [];
+      let currentLine = '';
+
+      words.forEach(char => {
+        const testLine = currentLine + char;
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = char;
+        } else {
+          currentLine = testLine;
+        }
+      });
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      roundRectPath(ctx, x, y, width, height, radius);
+      ctx.fill();
+    }
+
+    function roundRectPath(ctx, x, y, width, height, radius) {
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    // Save/Export functions
+    function saveImage() {
+      const dataUrl = canvas.toDataURL('image/png');
+      const title = currentTab === 'thumbnail'
+        ? titleInput.value || 'Untitled'
+        : summaryTitleInput.value || 'Untitled';
+
+      savedImages.unshift({
+        id: crypto.randomUUID(),
+        type: currentTab,
+        title: title,
+        dataUrl: dataUrl,
+        createdAt: new Date().toISOString()
+      });
+
+      // Keep only 50 most recent
+      if (savedImages.length > 50) {
+        savedImages = savedImages.slice(0, 50);
+      }
+
+      localStorage.setItem('artifact_images', JSON.stringify(savedImages));
+      renderGallery();
+      showToast('画像を保存しました');
+    }
+
+    function downloadImage() {
+      const link = document.createElement('a');
+      link.download = `artifact-${currentTab}-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('ダウンロードを開始しました');
+    }
+
+    async function copyImage() {
+      try {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        showToast('クリップボードにコピーしました');
+      } catch (err) {
+        showToast('コピーに失敗しました');
+      }
+    }
+
+    function renderGallery() {
+      if (savedImages.length === 0) {
+        galleryGrid.innerHTML = '<div class="empty-gallery">保存した画像はありません</div>';
+        return;
+      }
+
+      galleryGrid.innerHTML = savedImages.map(img => `
+        <div class="gallery-item" data-id="${img.id}">
+          <img src="${img.dataUrl}" alt="${img.title}">
+          <div class="gallery-item-overlay">
+            <span class="gallery-item-title">${img.title}</span>
+          </div>
+          <button class="gallery-item-delete" onclick="deleteImage('${img.id}')">×</button>
+        </div>
+      `).join('');
+
+      // Add click handlers for modal
+      document.querySelectorAll('.gallery-item img').forEach(img => {
+        img.addEventListener('click', () => {
+          modalImage.src = img.src;
+          modal.classList.add('active');
+        });
+      });
+    }
+
+    function deleteImage(id) {
+      if (!confirm('この画像を削除しますか？')) return;
+      savedImages = savedImages.filter(img => img.id !== id);
+      localStorage.setItem('artifact_images', JSON.stringify(savedImages));
+      renderGallery();
+      showToast('画像を削除しました');
+    }
+
+    function clearGallery() {
+      if (!confirm('すべての保存済み画像を削除しますか？')) return;
+      savedImages = [];
+      localStorage.setItem('artifact_images', JSON.stringify(savedImages));
+      renderGallery();
+      showToast('すべての画像を削除しました');
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // Initialize
+    init();
+  </script>
+</body>
+</html>
