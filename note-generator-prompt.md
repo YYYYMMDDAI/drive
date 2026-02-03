@@ -56,6 +56,7 @@ Google Apps Scriptを廃止し、Claude Code Web + GitHubで構築されたWeb�
    npm run test:e2e
    ```
 8. マネタイズ設定: Stripeダッシュボードでプロダクト作成、`/subscribe`ページ追加
+9. GitHub Actionsでデプロイ自動化（Vercel + 環境変数）
 
 ## 主要コード例
 
@@ -319,6 +320,72 @@ test('Generate note artifacts E2E', async ({ page }) => {
 - Stripe統合は別途実装（`/subscribe`ページ作成）
 - テスト失敗時はデバッグ
 - イーロン視点: コスト最適化（APIキャッシュ追加）、革新（コラボ機能検討）
+
+## GitHub Actions デプロイフロー（Vercel）
+
+以下のいずれかの方式で自動デプロイを構成する。
+
+### 方式A: Vercel公式GitHub連携（最小構成）
+
+1. VercelダッシュボードでGitHubリポジトリを連携
+2. `main`へのpushで自動デプロイ（Preview/Production）
+3. Vercel側で環境変数を設定
+
+### 方式B: GitHub Actionsで明示的にデプロイ
+
+1. Vercelでトークン/組織/プロジェクトIDを取得
+2. GitHub Secretsに以下を設定
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+3. `.github/workflows/deploy.yml` を追加
+
+```yaml
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel build --prod --token=$VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+```
+
+## Codex内での実装検証（試行手順）
+
+Claude Code Web（Codex）上で以下の順に試行し、問題点を洗い出す。
+
+1. Viteテンプレートの起動確認: `npm run dev`
+2. APIモックでUIフロー確認（API実装前にダミー返却）
+3. `/api/generate` のローカル動作確認（Vercel dev推奨）
+4. Stripeページへの導線・リンク確認（ダミーでも可）
+5. PlaywrightでE2Eテスト実行
+
+## 事前に確認しておく問題点チェックリスト
+
+- **APIキーの露出**: フロントで直接呼び出さない
+- **CORS**: Vercel Functions経由に統一
+- **DALL-Eサイズ**: 1280x670は非対応なので近似サイズを利用
+- **Claudeレスポンス形式**: `content[0].text` 取得に注意
+- **無料枠制限**: localStorageのみだと改ざんされるため将来はバックエンド保存が必要
 
 ---
 
