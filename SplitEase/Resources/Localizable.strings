@@ -1,0 +1,71 @@
+/* SplitEase 日本語ローカライズ */
+
+// 一般
+"app_name" = "SplitEase";
+"close" = "閉じる";
+"cancel" = "キャンセル";
+"save" = "保存";
+"delete" = "削除";
+"settings" = "設定";
+
+// オンボーディング
+"onboarding_title_1" = "画面を2つに分割";
+"onboarding_body_1" = "動画を見ながらSNSをチェック。\niPhoneで画面分割を実現します。";
+"onboarding_title_2" = "ドラッグで自由に調整";
+"onboarding_body_2" = "分割バーをドラッグして\n上下の大きさを自由に変えられます。";
+"onboarding_title_3" = "プライバシー保護";
+"onboarding_body_3" = "すべてのデータはあなたのデバイス内。\n外部サーバーへの送信はゼロです。";
+"onboarding_start" = "はじめる";
+"onboarding_skip" = "スキップ";
+"onboarding_next" = "次へ";
+
+// プリセット
+"preset_title" = "プリセット";
+"preset_default" = "標準プリセット";
+"preset_custom" = "カスタムプリセット";
+"preset_add" = "新しいペアを追加";
+"preset_a_name" = "A: 動画 + SNS";
+"preset_a_desc" = "YouTubeを見ながらXをチェック";
+"preset_b_name" = "B: 動画 + メモ";
+"preset_b_desc" = "動画を見ながらメモを取る";
+"preset_c_name" = "C: 検索 + 辞書";
+"preset_c_desc" = "検索しながら辞書で調べる";
+
+// 設定
+"settings_premium" = "SplitEase プレミアム";
+"settings_premium_active" = "プレミアム有効";
+"settings_restore" = "購入を復元";
+"settings_privacy" = "プライバシー保護";
+"settings_privacy_desc" = "すべてのデータはデバイス内に保存され、外部サーバーには送信されません";
+"settings_version" = "バージョン";
+"settings_support" = "サポート・お問い合わせ";
+
+// プレミアム
+"premium_upgrade" = "プレミアムにアップグレード";
+"premium_limit_msg" = "無料版ではカスタムプリセットは3個まで。プレミアムで無制限にできます。";
+"premium_detail" = "詳細を見る";
+"premium_later" = "あとで";
+"premium_benefit_1" = "無制限のカスタムプリセット";
+"premium_benefit_2" = "広告なし";
+"premium_benefit_3" = "テーマカスタマイズ";
+
+// バッテリー
+"battery_low_power" = "低電力モードのため、表示を制限しています";
+"battery_low_level" = "バッテリー残量が少なくなっています";
+"battery_saving" = "バッテリー節約のため、自動更新を停止しています";
+
+// パネル
+"pane_url_placeholder" = "URLを入力してWebサイトを表示";
+"pane_url_example" = "例: youtube.com";
+"pane_open" = "開く";
+"pane_close" = "閉じる";
+"pane_memo" = "メモ";
+"pane_memo_chars" = "%d文字";
+
+// アクセシビリティ
+"a11y_dual_view" = "デュアルビュー: 画面分割表示";
+"a11y_preset_select" = "プリセット選択";
+"a11y_settings" = "設定";
+"a11y_divider" = "分割バー: ドラッグで比率を調整";
+"a11y_divider_hint_v" = "上下にドラッグしてパネルの高さを変更できます";
+"a11y_divider_hint_h" = "左右にドラッグしてパネルの幅を変更できます";
