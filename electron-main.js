@@ -23,13 +23,31 @@ function createWindow() {
     backgroundColor: "#0f0f14",
   });
 
-  // Always grant all permissions (mic, clipboard, etc.)
+  // Always grant all permissions (mic, clipboard, media, etc.)
   const ses = mainWindow.webContents.session;
 
   ses.setPermissionCheckHandler(() => true);
 
   ses.setPermissionRequestHandler((webContents, permission, callback) => {
     callback(true);
+  });
+
+  // Security: set CSP for Electron renderer
+  ses.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          "default-src 'self'; " +
+          "script-src 'self' https://cdn.jsdelivr.net blob:; " +
+          "connect-src 'self' https://api.mymemory.translated.net https://cdn.jsdelivr.net https://huggingface.co; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "img-src 'self' data:; " +
+          "media-src 'self' blob:; " +
+          "worker-src 'self' blob:;"
+        ],
+      },
+    });
   });
 
   mainWindow.loadFile("index.html");

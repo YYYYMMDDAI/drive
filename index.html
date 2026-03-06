@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Voice Input — 音声入力 & 翻訳</title>
+  <!-- Security: Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://cdn.jsdelivr.net blob:;
+    connect-src 'self' https://api.mymemory.translated.net https://cdn.jsdelivr.net https://huggingface.co;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data:;
+    media-src 'self' blob:;
+    worker-src 'self' blob:;
+  ">
   <link rel="stylesheet" href="style.css">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -60,6 +70,10 @@
           <svg class="mic-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
           <svg class="stop-icon hidden" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
         </button>
+        <!-- VAD audio level indicator -->
+        <div class="vad-indicator hidden" id="vad-indicator">
+          <div class="vad-bar" id="vad-bar"></div>
+        </div>
         <span class="mic-label" id="mic-label">タップして録音開始</span>
       </div>
 
@@ -110,6 +124,18 @@
       </section>
     </main>
 
+    <!-- モデル読み込みオーバーレイ -->
+    <div class="model-loading hidden" id="model-loading">
+      <div class="model-loading-content">
+        <div class="model-loading-spinner"></div>
+        <div class="model-loading-text" id="model-loading-text">音声認識モデルを準備中...</div>
+        <div class="model-loading-progress">
+          <div class="model-loading-bar" id="model-loading-bar"></div>
+        </div>
+        <div class="model-loading-detail" id="model-loading-detail"></div>
+      </div>
+    </div>
+
     <!-- 自動コピー通知 -->
     <div class="toast hidden" id="toast">コピーしました</div>
 
@@ -120,11 +146,5 @@
   </div>
 
   <script src="app.js"></script>
-  <script>
-    // Register Service Worker for PWA (only in browser, not Electron)
-    if ("serviceWorker" in navigator && !navigator.userAgent.includes("Electron")) {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
-    }
-  </script>
 </body>
 </html>
