@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Nothing Phone (4a) Pro Fold — Concept V1 (Black)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #e0e0e0; display: flex; justify-content: center; align-items: flex-start; padding: 24px; }
+  </style>
+</head>
+<body>
+<svg width="1800" height="900" viewBox="0 0 1800 900" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#e8e8e8"/><stop offset="100%" stop-color="#d6d6d6"/>
+  </linearGradient>
+  <linearGradient id="blackBody" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#2c2c2c"/><stop offset="100%" stop-color="#1a1a1a"/>
+  </linearGradient>
+  <linearGradient id="whiteBody" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#f8f8f5"/><stop offset="60%" stop-color="#eeeeea"/><stop offset="100%" stop-color="#d8d8d4"/>
+  </linearGradient>
+  <linearGradient id="blackFrame" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#383838"/><stop offset="50%" stop-color="#505050"/><stop offset="100%" stop-color="#303030"/>
+  </linearGradient>
+  <linearGradient id="whiteFrame" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#c8c8c2"/><stop offset="50%" stop-color="#e0e0d8"/><stop offset="100%" stop-color="#b8b8b0"/>
+  </linearGradient>
+  <linearGradient id="screenDark" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#0e0e0e"/><stop offset="100%" stop-color="#080808"/>
+  </linearGradient>
+  <radialGradient id="tealWall" cx="65%" cy="38%" r="70%">
+    <stop offset="0%" stop-color="#0d4848"/><stop offset="45%" stop-color="#083535"/><stop offset="100%" stop-color="#031818"/>
+  </radialGradient>
+  <linearGradient id="hingeBlack" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#3c3c3c"/><stop offset="45%" stop-color="#585858"/><stop offset="100%" stop-color="#2a2a2a"/>
+  </linearGradient>
+  <linearGradient id="hingeSilver" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#bbbbb6"/><stop offset="45%" stop-color="#ddddd8"/><stop offset="100%" stop-color="#aaaaa4"/>
+  </linearGradient>
+  <radialGradient id="lensGrad" cx="35%" cy="30%" r="65%">
+    <stop offset="0%" stop-color="#2a3850"/><stop offset="55%" stop-color="#10181e"/><stop offset="100%" stop-color="#020408"/>
+  </radialGradient>
+  <radialGradient id="lensShine" cx="30%" cy="28%" r="42%">
+    <stop offset="0%" stop-color="rgba(255,255,255,0.38)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+  </radialGradient>
+  <linearGradient id="camHousing" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#1c1c1c"/><stop offset="100%" stop-color="#0e0e0e"/>
+  </linearGradient>
+  <linearGradient id="transBack" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="rgba(245,245,240,0.90)"/><stop offset="100%" stop-color="rgba(212,212,206,0.78)"/>
+  </linearGradient>
+  <filter id="shadow" x="-30%" y="-20%" width="160%" height="165%">
+    <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000" flood-opacity="0.20"/>
+  </filter>
+  <filter id="shadowSm" x="-25%" y="-20%" width="150%" height="160%">
+    <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.14"/>
+  </filter>
+  <filter id="glowLED" x="-80%" y="-80%" width="260%" height="260%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <pattern id="circPat" x="0" y="0" width="34" height="34" patternUnits="userSpaceOnUse">
+    <rect width="34" height="34" fill="none"/>
+    <line x1="0" y1="17" x2="34" y2="17" stroke="#c2c2bc" stroke-width="0.35" opacity="0.4"/>
+    <line x1="17" y1="0" x2="17" y2="34" stroke="#c2c2bc" stroke-width="0.35" opacity="0.4"/>
+    <circle cx="17" cy="17" r="2.2" fill="none" stroke="#b5b5ae" stroke-width="0.45" opacity="0.32"/>
+    <rect x="3" y="9" width="7" height="5" rx="1" fill="none" stroke="#bcbcb5" stroke-width="0.4" opacity="0.28"/>
+    <rect x="21" y="19" width="9" height="4" rx="1" fill="none" stroke="#bcbcb5" stroke-width="0.4" opacity="0.25"/>
+  </pattern>
+  <linearGradient id="refFade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#d8d8d5" stop-opacity="0"/><stop offset="100%" stop-color="#d8d8d5" stop-opacity="1"/>
+  </linearGradient>
+</defs>
+
+<!-- Background -->
+<rect width="1800" height="900" fill="url(#bg)"/>
+
+<!-- Cell dividers -->
+<line x1="585" y1="28" x2="585" y2="562" stroke="#cacac8" stroke-width="0.6" opacity="0.7" stroke-dasharray="2,10"/>
+<line x1="1200" y1="28" x2="1200" y2="562" stroke="#cacac8" stroke-width="0.6" opacity="0.7" stroke-dasharray="2,10"/>
+<line x1="28" y1="574" x2="1772" y2="574" stroke="#cacac8" stroke-width="0.6" opacity="0.6"/>
+
+<!-- =====================================================================
+     VIEW 1: CLOSED PHONE — FRONT (COVER DISPLAY)
+     Book-fold closed: narrow portrait, front = cover display
+     Center: (292, 275)  Phone: 128w × 292h  TL:(228, 128)
+     ===================================================================== -->
+<g transform="translate(228,128)" filter="url(#shadow)">
+  <!-- Body (black aluminum unibody) -->
+  <rect x="0" y="0" width="128" height="292" rx="20" fill="url(#blackBody)" stroke="#3c3c3c" stroke-width="1.5"/>
+  <rect x="1.5" y="1.5" width="125" height="289" rx="19" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+
+  <!-- Cover display -->
+  <rect x="8" y="10" width="112" height="272" rx="14" fill="url(#screenDark)"/>
+
+  <!-- Status bar -->
+  <text x="22" y="21" font-family="'Helvetica Neue',Arial,sans-serif" font-size="5.5" fill="#686868">3:20</text>
+  <text x="110" y="21" text-anchor="end" font-family="Arial" font-size="5" fill="#555">▲ ◆ ▊</text>
+
+  <!-- Big digital clock -->
+  <text x="64" y="62" text-anchor="middle" font-family="'Courier New',monospace" font-size="24" font-weight="200" fill="#ffffff" letter-spacing="1">12:45</text>
+  <!-- Date / carrier -->
+  <text x="64" y="75" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="5" fill="#4e4e4e">Nothing  ·  2026 / 3</text>
+  <text x="64" y="85" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="4.8" fill="#404040">Nothing OS</text>
+
+  <!-- Divider -->
+  <line x1="24" y1="91" x2="104" y2="91" stroke="#1e1e1e" stroke-width="0.6"/>
+
+  <!-- Widget row 1 -->
+  <!-- Analog clock widget -->
+  <rect x="11" y="96" width="50" height="50" rx="8" fill="#0e0e0e" stroke="#1c1c1c" stroke-width="0.5"/>
+  <circle cx="36" cy="121" r="20" fill="#090909"/>
+  <circle cx="36" cy="121" r="18.5" fill="none" stroke="#232323" stroke-width="0.8"/>
+  <line x1="36" y1="121" x2="36" y2="105" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="36" y1="121" x2="49" y2="121" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>
+  <circle cx="36" cy="121" r="2.2" fill="#fff"/>
+  <line x1="36" y1="103" x2="36" y2="105.5" stroke="#383838" stroke-width="0.8"/>
+  <line x1="36" y1="136.5" x2="36" y2="139" stroke="#383838" stroke-width="0.8"/>
+  <line x1="18.5" y1="121" x2="21" y2="121" stroke="#383838" stroke-width="0.8"/>
+  <line x1="51" y1="121" x2="53.5" y2="121" stroke="#383838" stroke-width="0.8"/>
+
+  <!-- Glyph Matrix widget (sound wave bars) -->
+  <rect x="67" y="96" width="52" height="50" rx="8" fill="#0a0a0a" stroke="#1c1c1c" stroke-width="0.5"/>
+  <g transform="translate(72,111)" filter="url(#glowLED)">
+    <rect x="0" y="20" width="5" height="17" rx="1.8" fill="#fff" opacity="0.68"/>
+    <rect x="7" y="12" width="5" height="25" rx="1.8" fill="#fff" opacity="0.82"/>
+    <rect x="14" y="4" width="5" height="33" rx="1.8" fill="#fff"/>
+    <rect x="21" y="8" width="5" height="29" rx="1.8" fill="#fff"/>
+    <rect x="28" y="15" width="5" height="22" rx="1.8" fill="#fff" opacity="0.88"/>
+    <rect x="35" y="21" width="5" height="16" rx="1.8" fill="#fff" opacity="0.68"/>
+  </g>
+
+  <!-- Widget row 2 -->
+  <!-- Weather widget -->
+  <rect x="11" y="151" width="50" height="44" rx="8" fill="#0e0e0e" stroke="#1c1c1c" stroke-width="0.5"/>
+  <text x="36" y="170" text-anchor="middle" font-size="13" fill="#aaa">⛅</text>
+  <text x="36" y="185" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="8.5" fill="#fff">20°C</text>
+
+  <!-- "Nothing Phone(4a) Pro" label widget -->
+  <rect x="67" y="151" width="52" height="44" rx="8" fill="#0e0e0e" stroke="#1c1c1c" stroke-width="0.5"/>
+  <text x="93" y="167" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="4.8" fill="#555">Nothing</text>
+  <text x="93" y="177" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="4.2" fill="#484848">Phone(4a) Pro</text>
+  <circle cx="93" cy="186" r="2.5" fill="#dc2626"/>
+
+  <!-- Divider -->
+  <line x1="24" y1="200" x2="104" y2="200" stroke="#1c1c1c" stroke-width="0.5"/>
+
+  <!-- App shortcuts row -->
+  <circle cx="28" cy="221" r="12.5" fill="#0e0e0e" stroke="#1e1e1e" stroke-width="0.5"/>
+  <text x="28" y="225" text-anchor="middle" font-size="10" fill="#777">📞</text>
+  <circle cx="52" cy="221" r="12.5" fill="#0e0e0e" stroke="#1e1e1e" stroke-width="0.5"/>
+  <text x="52" y="225" text-anchor="middle" font-size="10" fill="#777">♥</text>
+  <circle cx="76" cy="221" r="12.5" fill="#0e0e0e" stroke="#1e1e1e" stroke-width="0.5"/>
+  <text x="76" y="225" text-anchor="middle" font-size="10" fill="#777">📷</text>
+  <circle cx="100" cy="221" r="12.5" fill="#0e0e0e" stroke="#1e1e1e" stroke-width="0.5"/>
+  <text x="100" y="225" text-anchor="middle" font-size="10" fill="#777">⚙</text>
+
+  <!-- Home bar -->
+  <rect x="49" y="272" width="30" height="3" rx="1.5" fill="#282828"/>
+
+  <!-- Punch-hole front camera (top center) -->
+  <circle cx="64" cy="17" r="3.8" fill="#030303" stroke="#111" stroke-width="0.5"/>
+
+  <!-- Power button right -->
+  <rect x="127" y="98" width="5" height="30" rx="2.5" fill="url(#blackFrame)" stroke="#454545" stroke-width="0.8"/>
+  <!-- Volume left -->
+  <rect x="-4" y="105" width="4.5" height="24" rx="2.2" fill="url(#blackFrame)" stroke="#454545" stroke-width="0.8"/>
+  <rect x="-4" y="133" width="4.5" height="19" rx="2.2" fill="url(#blackFrame)" stroke="#454545" stroke-width="0.8"/>
+</g>
+<!-- Reflection v1 -->
+<g transform="translate(228,421) scale(1,-0.16)" opacity="0.10">
+  <rect x="0" y="0" width="128" height="292" rx="20" fill="#1a1a1a"/>
+  <rect x="8" y="10" width="112" height="272" rx="14" fill="#060606"/>
+</g>
+<rect x="221" y="420" width="142" height="58" fill="url(#refFade)"/>
+<!-- Label v1 -->
+<text x="292" y="488" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="11" letter-spacing="2.5" fill="#888">COVER DISPLAY</text>
+
+<!-- =====================================================================
+     VIEW 2: OPEN PHONE — INNER DISPLAY
+     Book-fold open in portrait: 260w × 308h  TL:(752,96)
+     Hinge crease: vertical at x=130 (center of display)
+     ===================================================================== -->
+<g transform="translate(752,96)" filter="url(#shadow)">
+  <!-- Outer body (black) -->
+  <rect x="0" y="0" width="260" height="308" rx="22" fill="url(#blackBody)" stroke="#3c3c3c" stroke-width="1.5"/>
+  <rect x="1.5" y="1.5" width="257" height="305" rx="21" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+
+  <!-- Inner display (large, teal wallpaper) -->
+  <rect x="8" y="9" width="244" height="290" rx="16" fill="url(#tealWall)"/>
+
+  <!-- Hinge crease line (vertical, center of display) -->
+  <line x1="130" y1="9" x2="130" y2="299" stroke="rgba(0,0,0,0.22)" stroke-width="1.8"/>
+  <line x1="129.2" y1="9" x2="129.2" y2="299" stroke="rgba(255,255,255,0.04)" stroke-width="0.8"/>
+
+  <!-- ── LEFT PANEL CONTENT ── -->
+  <!-- Status bar (left) -->
+  <rect x="8" y="9" width="122" height="14" rx="1" ry="0" fill="rgba(0,0,0,0.30)"/>
+  <text x="22" y="19" font-family="'Helvetica Neue',Arial,sans-serif" font-size="6" fill="#999">16:30</text>
+  <text x="122" y="19" text-anchor="end" font-family="Arial" font-size="5.5" fill="#777">▲ ◆ ▊</text>
+
+  <!-- Stretch widget (weather/app) -->
+  <rect x="13" y="28" width="114" height="62" rx="10" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <text x="70" y="50" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="12" font-weight="300" fill="#fff">Stretch</text>
+  <!-- Glyph bars inside Stretch widget -->
+  <g transform="translate(20,55)" filter="url(#glowLED)">
+    <rect x="0" y="16" width="5.5" height="14" rx="1.8" fill="#fff" opacity="0.62"/>
+    <rect x="8" y="9"  width="5.5" height="21" rx="1.8" fill="#fff" opacity="0.78"/>
+    <rect x="16" y="3" width="5.5" height="27" rx="1.8" fill="#fff"/>
+    <rect x="24" y="6" width="5.5" height="24" rx="1.8" fill="#fff"/>
+    <rect x="32" y="12" width="5.5" height="18" rx="1.8" fill="#fff" opacity="0.86"/>
+    <rect x="40" y="17" width="5.5" height="13" rx="1.8" fill="#fff" opacity="0.66"/>
+  </g>
+
+  <!-- Earbuds widget -->
+  <rect x="13" y="95" width="114" height="50" rx="10" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <circle cx="36" cy="120" r="16" fill="rgba(25,25,25,0.85)" stroke="#2a2a2a" stroke-width="1"/>
+  <circle cx="36" cy="120" r="8.5" fill="#1e1e1e"/>
+  <circle cx="32" cy="116" r="3" fill="#444"/>
+  <text x="60" y="116" font-family="'Helvetica Neue',Arial" font-size="7" fill="#999">80%</text>
+  <text x="60" y="127" font-family="'Helvetica Neue',Arial" font-size="7" fill="#999">90%</text>
+  <rect x="78" y="112" width="34" height="5" rx="2.5" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
+  <rect x="78" y="112" width="28" height="5" rx="2.5" fill="#3a9"/>
+  <rect x="78" y="121" width="34" height="5" rx="2.5" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
+  <rect x="78" y="121" width="31" height="5" rx="2.5" fill="#3a9"/>
+
+  <!-- Quick controls widget -->
+  <rect x="13" y="150" width="114" height="54" rx="10" fill="rgba(0,0,0,0.28)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <!-- Red record button -->
+  <circle cx="38" cy="177" r="17" fill="#c01010" stroke="#8a0c0c" stroke-width="1"/>
+  <circle cx="38" cy="177" r="9.5" fill="#a00e0e"/>
+  <circle cx="33" cy="172" r="3" fill="rgba(255,255,255,0.18)"/>
+  <!-- Up arrow -->
+  <circle cx="68" cy="177" r="12" fill="#111" stroke="#2a2a2a" stroke-width="0.8"/>
+  <text x="68" y="181.5" text-anchor="middle" font-family="Arial" font-size="10" fill="#666">↑</text>
+  <!-- Dot grid buttons -->
+  <circle cx="95" cy="169" r="6" fill="#141414" stroke="#252525" stroke-width="0.5"/>
+  <circle cx="109" cy="169" r="6" fill="#141414" stroke="#252525" stroke-width="0.5"/>
+  <circle cx="95" cy="185" r="6" fill="#141414" stroke="#252525" stroke-width="0.5"/>
+  <circle cx="109" cy="185" r="6" fill="#141414" stroke="#252525" stroke-width="0.5"/>
+
+  <!-- App icon row (left panel) -->
+  <circle cx="26" cy="233" r="14" fill="rgba(0,0,0,0.38)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <text x="26" y="237" text-anchor="middle" font-size="11" fill="#888">📞</text>
+  <circle cx="52" cy="233" r="14" fill="rgba(0,0,0,0.38)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <text x="52" y="237" text-anchor="middle" font-size="11" fill="#888">♥</text>
+  <circle cx="78" cy="233" r="14" fill="rgba(0,0,0,0.38)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <text x="78" y="237" text-anchor="middle" font-size="11" fill="#888">📷</text>
+  <circle cx="104" cy="233" r="14" fill="rgba(0,0,0,0.38)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <text x="104" y="237" text-anchor="middle" font-size="11" fill="#888">⊙</text>
+  <circle cx="122" cy="233" r="14" fill="rgba(0,0,0,0.38)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <text x="122" y="237" text-anchor="middle" font-size="11" fill="#888">✦</text>
+
+  <!-- ── RIGHT PANEL CONTENT ── -->
+  <!-- Status bar (right) -->
+  <rect x="131" y="9" width="121" height="14" rx="0" ry="0" fill="rgba(0,0,0,0.28)"/>
+
+  <!-- Analog clock (large, right panel) -->
+  <rect x="136" y="25" width="112" height="100" rx="10" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <circle cx="192" cy="75" r="38" fill="rgba(8,8,8,0.7)"/>
+  <circle cx="192" cy="75" r="36" fill="none" stroke="#1e1e1e" stroke-width="1"/>
+  <line x1="192" y1="39" x2="192" y2="43.5" stroke="#2e2e2e" stroke-width="1"/>
+  <line x1="192" y1="106.5" x2="192" y2="111" stroke="#2e2e2e" stroke-width="1"/>
+  <line x1="156" y1="75" x2="160.5" y2="75" stroke="#2e2e2e" stroke-width="1"/>
+  <line x1="223.5" y1="75" x2="228" y2="75" stroke="#2e2e2e" stroke-width="1"/>
+  <line x1="192" y1="75" x2="192" y2="48" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="192" y1="75" x2="213" y2="75" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="192" cy="75" r="3" fill="#fff"/>
+
+  <!-- Icon grid (right panel, lower) -->
+  <rect x="136" y="133" width="50" height="50" rx="10" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <g transform="translate(143,143)" filter="url(#glowLED)">
+    <rect x="0" y="10" width="4.5" height="13" rx="1.5" fill="#fff" opacity="0.6"/>
+    <rect x="6" y="6"  width="4.5" height="17" rx="1.5" fill="#fff" opacity="0.75"/>
+    <rect x="12" y="2" width="4.5" height="21" rx="1.5" fill="#fff"/>
+    <rect x="18" y="5" width="4.5" height="18" rx="1.5" fill="#fff"/>
+    <rect x="24" y="9" width="4.5" height="14" rx="1.5" fill="#fff" opacity="0.8"/>
+    <rect x="30" y="13" width="4.5" height="10" rx="1.5" fill="#fff" opacity="0.62"/>
+  </g>
+  <rect x="192" y="133" width="55" height="50" rx="10" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <text x="219.5" y="152" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="7" fill="#888">Maps</text>
+
+  <rect x="136" y="190" width="50" height="50" rx="10" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+  <rect x="192" y="190" width="55" height="50" rx="10" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+
+  <!-- Search bar (full width bottom) -->
+  <rect x="13" y="259" width="234" height="22" rx="11" fill="rgba(0,0,0,0.38)" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+  <text x="130" y="272.5" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="7.5" fill="#4a4a4a" letter-spacing="1">Search</text>
+  <circle cx="26" cy="270" r="5.5" fill="none" stroke="#3c3c3c" stroke-width="1"/>
+  <line x1="29.9" y1="273.9" x2="33" y2="277" stroke="#3c3c3c" stroke-width="1" stroke-linecap="round"/>
+
+  <!-- Under-display camera hint (top right, nearly invisible) -->
+  <circle cx="243" cy="16" r="4.5" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.025)" stroke-width="0.5"/>
+
+  <!-- Home bar (full width) -->
+  <rect x="115" y="294" width="30" height="3" rx="1.5" fill="rgba(255,255,255,0.14)"/>
+
+  <!-- Side buttons -->
+  <rect x="259" y="88" width="5" height="34" rx="2.5" fill="url(#blackFrame)" stroke="#454545" stroke-width="0.8"/>
+  <rect x="-4" y="93" width="4.5" height="26" rx="2.2" fill="url(#blackFrame)" stroke="#454545" stroke-width="0.8"/>
+  <rect x="-4" y="123" width="4.5" height="21" rx="2.2" fill="url(#blackFrame)" stroke="#454545" stroke-width="0.8"/>
+</g>
+<!-- Reflection v2 -->
+<g transform="translate(752,405) scale(1,-0.14)" opacity="0.09">
+  <rect x="0" y="0" width="260" height="308" rx="22" fill="#1a1a1a"/>
+  <rect x="8" y="9" width="244" height="290" rx="16" fill="#041818"/>
+</g>
+<rect x="745" y="404" width="275" height="54" fill="url(#refFade)"/>
+<!-- Label v2 -->
+<text x="882" y="488" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="11" letter-spacing="2.5" fill="#888">INNER DISPLAY</text>
+
+<!-- =====================================================================
+     VIEW 3: BACK VIEW — TWO COLOR VARIANTS
+     Left: Black  Right: Lunar White
+     Left TL:(1235,115)  Right TL:(1382,125)
+     Camera on back = same panel as cover display (book-fold structure)
+     When open from back: camera panel + cover display panel side by side
+     ===================================================================== -->
+
+<!-- BLACK VARIANT (left) — back view showing camera + Glyph Matrix -->
+<g transform="translate(1235,110)" filter="url(#shadow)">
+  <!-- Body -->
+  <rect x="0" y="0" width="128" height="288" rx="20" fill="url(#blackBody)" stroke="#3c3c3c" stroke-width="1.5"/>
+  <rect x="1.5" y="1.5" width="125" height="285" rx="19" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+
+  <!-- Camera module housing (oblong, top-center of back) -->
+  <rect x="6" y="12" width="116" height="120" rx="16" fill="url(#camHousing)" stroke="#282828" stroke-width="1"/>
+  <rect x="8" y="14" width="112" height="116" rx="14" fill="#101010"/>
+
+  <!-- Glyph Matrix display (top of camera housing — 137 mini-LED dot matrix) -->
+  <rect x="12" y="18" width="104" height="60" rx="10" fill="#080808" stroke="#181818" stroke-width="0.5"/>
+  <!-- Dot matrix sound wave pattern (col pitch=9px, row pitch=7px, start x=15,y=22) -->
+  <g fill="#ffffff" filter="url(#glowLED)">
+    <!-- Bar heights from bottom (rows): col0=2, col1=4, col2=6, col3=8, col4=6, col5=5, col6=7, col7=5, col8=8, col9=6, col10=4, col11=2 -->
+    <!-- Max 8 rows, row0=top(y=22), row7=bottom(y=57), each 5px tall, 2px gap -->
+    <!-- col 0 (h=2): rows 6,7 -->
+    <rect x="15" y="50" width="5" height="5" rx="1"/>
+    <rect x="15" y="57" width="5" height="5" rx="1"/>
+    <!-- col 1 (h=4): rows 4-7 -->
+    <rect x="24" y="36" width="5" height="5" rx="1"/>
+    <rect x="24" y="43" width="5" height="5" rx="1"/>
+    <rect x="24" y="50" width="5" height="5" rx="1"/>
+    <rect x="24" y="57" width="5" height="5" rx="1"/>
+    <!-- col 2 (h=6): rows 2-7 -->
+    <rect x="33" y="22" width="5" height="5" rx="1"/>
+    <rect x="33" y="29" width="5" height="5" rx="1"/>
+    <rect x="33" y="36" width="5" height="5" rx="1"/>
+    <rect x="33" y="43" width="5" height="5" rx="1"/>
+    <rect x="33" y="50" width="5" height="5" rx="1"/>
+    <rect x="33" y="57" width="5" height="5" rx="1"/>
+    <!-- col 3 (h=8): rows 0-7 -->
+    <rect x="42" y="22" width="5" height="5" rx="1"/>
+    <rect x="42" y="29" width="5" height="5" rx="1"/>
+    <rect x="42" y="36" width="5" height="5" rx="1"/>
+    <rect x="42" y="43" width="5" height="5" rx="1"/>
+    <rect x="42" y="50" width="5" height="5" rx="1"/>
+    <rect x="42" y="57" width="5" height="5" rx="1"/>
+    <!-- col 4 (h=6): rows 2-7 -->
+    <rect x="51" y="29" width="5" height="5" rx="1"/>
+    <rect x="51" y="36" width="5" height="5" rx="1"/>
+    <rect x="51" y="43" width="5" height="5" rx="1"/>
+    <rect x="51" y="50" width="5" height="5" rx="1"/>
+    <rect x="51" y="57" width="5" height="5" rx="1"/>
+    <!-- col 5 (h=5): rows 3-7 -->
+    <rect x="60" y="36" width="5" height="5" rx="1"/>
+    <rect x="60" y="43" width="5" height="5" rx="1"/>
+    <rect x="60" y="50" width="5" height="5" rx="1"/>
+    <rect x="60" y="57" width="5" height="5" rx="1"/>
+    <!-- col 6 (h=7): rows 1-7 -->
+    <rect x="69" y="22" width="5" height="5" rx="1"/>
+    <rect x="69" y="29" width="5" height="5" rx="1"/>
+    <rect x="69" y="36" width="5" height="5" rx="1"/>
+    <rect x="69" y="43" width="5" height="5" rx="1"/>
+    <rect x="69" y="50" width="5" height="5" rx="1"/>
+    <rect x="69" y="57" width="5" height="5" rx="1"/>
+    <!-- col 7 (h=5): rows 3-7 -->
+    <rect x="78" y="36" width="5" height="5" rx="1"/>
+    <rect x="78" y="43" width="5" height="5" rx="1"/>
+    <rect x="78" y="50" width="5" height="5" rx="1"/>
+    <rect x="78" y="57" width="5" height="5" rx="1"/>
+    <!-- col 8 (h=8): rows 0-7 -->
+    <rect x="87" y="22" width="5" height="5" rx="1"/>
+    <rect x="87" y="29" width="5" height="5" rx="1"/>
+    <rect x="87" y="36" width="5" height="5" rx="1"/>
+    <rect x="87" y="43" width="5" height="5" rx="1"/>
+    <rect x="87" y="50" width="5" height="5" rx="1"/>
+    <rect x="87" y="57" width="5" height="5" rx="1"/>
+    <!-- col 9 (h=6): rows 2-7 -->
+    <rect x="96" y="29" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="36" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="43" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="50" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="57" width="5" height="5" rx="1" opacity="0.9"/>
+    <!-- col 10 (h=4): rows 4-7 -->
+    <rect x="105" y="43" width="5" height="5" rx="1" opacity="0.82"/>
+    <rect x="105" y="50" width="5" height="5" rx="1" opacity="0.82"/>
+    <rect x="105" y="57" width="5" height="5" rx="1" opacity="0.82"/>
+    <!-- col 11 (h=2): rows 6-7 -->
+    <rect x="107" y="50" width="5" height="5" rx="1" opacity="0.72"/>
+    <rect x="107" y="57" width="5" height="5" rx="1" opacity="0.72"/>
+  </g>
+
+  <!-- Three camera lenses (Nothing 4a Pro: 50MP main + 8MP UW + 50MP periscope tele) -->
+  <!-- Main lens (50MP Sony LYT700C) — lower left -->
+  <circle cx="34" cy="106" r="24" fill="#080808" stroke="#1e1e1e" stroke-width="1.8"/>
+  <circle cx="34" cy="106" r="20" fill="url(#lensGrad)"/>
+  <circle cx="34" cy="106" r="20" fill="url(#lensShine)"/>
+  <circle cx="34" cy="106" r="11" fill="#030406" opacity="0.95"/>
+  <!-- Circular LED ring (part of Glyph Matrix) -->
+  <circle cx="34" cy="106" r="22.5" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1" stroke-dasharray="6,4" filter="url(#glowLED)"/>
+
+  <!-- Ultrawide (8MP) — lower center -->
+  <circle cx="74" cy="106" r="17" fill="#080808" stroke="#1e1e1e" stroke-width="1.5"/>
+  <circle cx="74" cy="106" r="13.5" fill="url(#lensGrad)"/>
+  <circle cx="74" cy="106" r="13.5" fill="url(#lensShine)"/>
+  <circle cx="74" cy="106" r="7" fill="#030406" opacity="0.95"/>
+
+  <!-- Periscope telephoto (50MP 3.5×) — lower right -->
+  <circle cx="107" cy="106" r="15" fill="#080808" stroke="#1e1e1e" stroke-width="1.5"/>
+  <circle cx="107" cy="106" r="11.5" fill="url(#lensGrad)"/>
+  <circle cx="107" cy="106" r="11.5" fill="url(#lensShine)"/>
+  <circle cx="107" cy="106" r="6" fill="#030406" opacity="0.95"/>
+
+  <!-- Flash -->
+  <circle cx="107" cy="90" r="4.5" fill="#252518" stroke="#303030" stroke-width="0.5"/>
+  <circle cx="107" cy="90" r="3" fill="#e0d898" opacity="0.55"/>
+
+  <!-- Red Essential Dot (Glyph indicator) -->
+  <circle cx="20" cy="90" r="5.5" fill="#dc2626" stroke="#8c1515" stroke-width="0.9"/>
+  <circle cx="18.5" cy="88.5" r="2" fill="rgba(255,255,255,0.22)"/>
+
+  <!-- NOTHING branding -->
+  <text x="64" y="196" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="7.5" letter-spacing="4.5" fill="#363636">NOTHING</text>
+
+  <!-- Regulatory text -->
+  <text x="64" y="256" text-anchor="middle" font-family="Arial" font-size="3.8" fill="#2a2a2a" opacity="0.45">CE  IP65  ⊕</text>
+</g>
+
+<!-- LUNAR WHITE VARIANT (right) — back view -->
+<g transform="translate(1380,125)" filter="url(#shadow)">
+  <rect x="0" y="0" width="128" height="278" rx="20" fill="url(#whiteBody)" stroke="#c5c5bf" stroke-width="1.5"/>
+  <rect x="1.5" y="1.5" width="125" height="275" rx="19" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1"/>
+
+  <!-- Camera housing (dark on white body) -->
+  <rect x="6" y="12" width="116" height="120" rx="16" fill="#1e1e1e" stroke="#282828" stroke-width="1"/>
+  <rect x="8" y="14" width="112" height="116" rx="14" fill="#101010"/>
+
+  <!-- Glyph Matrix (same wave pattern) -->
+  <rect x="12" y="18" width="104" height="60" rx="10" fill="#080808" stroke="#181818" stroke-width="0.5"/>
+  <g fill="#ffffff" filter="url(#glowLED)">
+    <rect x="15" y="50" width="5" height="5" rx="1"/>
+    <rect x="15" y="57" width="5" height="5" rx="1"/>
+    <rect x="24" y="36" width="5" height="5" rx="1"/>
+    <rect x="24" y="43" width="5" height="5" rx="1"/>
+    <rect x="24" y="50" width="5" height="5" rx="1"/>
+    <rect x="24" y="57" width="5" height="5" rx="1"/>
+    <rect x="33" y="22" width="5" height="5" rx="1"/>
+    <rect x="33" y="29" width="5" height="5" rx="1"/>
+    <rect x="33" y="36" width="5" height="5" rx="1"/>
+    <rect x="33" y="43" width="5" height="5" rx="1"/>
+    <rect x="33" y="50" width="5" height="5" rx="1"/>
+    <rect x="33" y="57" width="5" height="5" rx="1"/>
+    <rect x="42" y="22" width="5" height="5" rx="1"/>
+    <rect x="42" y="29" width="5" height="5" rx="1"/>
+    <rect x="42" y="36" width="5" height="5" rx="1"/>
+    <rect x="42" y="43" width="5" height="5" rx="1"/>
+    <rect x="42" y="50" width="5" height="5" rx="1"/>
+    <rect x="42" y="57" width="5" height="5" rx="1"/>
+    <rect x="51" y="29" width="5" height="5" rx="1"/>
+    <rect x="51" y="36" width="5" height="5" rx="1"/>
+    <rect x="51" y="43" width="5" height="5" rx="1"/>
+    <rect x="51" y="50" width="5" height="5" rx="1"/>
+    <rect x="51" y="57" width="5" height="5" rx="1"/>
+    <rect x="60" y="36" width="5" height="5" rx="1"/>
+    <rect x="60" y="43" width="5" height="5" rx="1"/>
+    <rect x="60" y="50" width="5" height="5" rx="1"/>
+    <rect x="60" y="57" width="5" height="5" rx="1"/>
+    <rect x="69" y="22" width="5" height="5" rx="1"/>
+    <rect x="69" y="29" width="5" height="5" rx="1"/>
+    <rect x="69" y="36" width="5" height="5" rx="1"/>
+    <rect x="69" y="43" width="5" height="5" rx="1"/>
+    <rect x="69" y="50" width="5" height="5" rx="1"/>
+    <rect x="69" y="57" width="5" height="5" rx="1"/>
+    <rect x="78" y="36" width="5" height="5" rx="1"/>
+    <rect x="78" y="43" width="5" height="5" rx="1"/>
+    <rect x="78" y="50" width="5" height="5" rx="1"/>
+    <rect x="78" y="57" width="5" height="5" rx="1"/>
+    <rect x="87" y="22" width="5" height="5" rx="1"/>
+    <rect x="87" y="29" width="5" height="5" rx="1"/>
+    <rect x="87" y="36" width="5" height="5" rx="1"/>
+    <rect x="87" y="43" width="5" height="5" rx="1"/>
+    <rect x="87" y="50" width="5" height="5" rx="1"/>
+    <rect x="87" y="57" width="5" height="5" rx="1"/>
+    <rect x="96" y="29" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="36" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="43" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="50" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="96" y="57" width="5" height="5" rx="1" opacity="0.9"/>
+    <rect x="105" y="43" width="5" height="5" rx="1" opacity="0.82"/>
+    <rect x="105" y="50" width="5" height="5" rx="1" opacity="0.82"/>
+    <rect x="105" y="57" width="5" height="5" rx="1" opacity="0.82"/>
+    <rect x="107" y="50" width="5" height="5" rx="1" opacity="0.72"/>
+    <rect x="107" y="57" width="5" height="5" rx="1" opacity="0.72"/>
+  </g>
+
+  <!-- Three lenses (same layout) -->
+  <circle cx="34" cy="106" r="24" fill="#080808" stroke="#1a1a1a" stroke-width="1.8"/>
+  <circle cx="34" cy="106" r="20" fill="url(#lensGrad)"/>
+  <circle cx="34" cy="106" r="20" fill="url(#lensShine)"/>
+  <circle cx="34" cy="106" r="11" fill="#030406" opacity="0.95"/>
+  <circle cx="34" cy="106" r="22.5" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1" stroke-dasharray="6,4" filter="url(#glowLED)"/>
+
+  <circle cx="74" cy="106" r="17" fill="#080808" stroke="#1a1a1a" stroke-width="1.5"/>
+  <circle cx="74" cy="106" r="13.5" fill="url(#lensGrad)"/>
+  <circle cx="74" cy="106" r="13.5" fill="url(#lensShine)"/>
+  <circle cx="74" cy="106" r="7" fill="#030406" opacity="0.95"/>
+
+  <circle cx="107" cy="106" r="15" fill="#080808" stroke="#1a1a1a" stroke-width="1.5"/>
+  <circle cx="107" cy="106" r="11.5" fill="url(#lensGrad)"/>
+  <circle cx="107" cy="106" r="11.5" fill="url(#lensShine)"/>
+  <circle cx="107" cy="106" r="6" fill="#030406" opacity="0.95"/>
+
+  <circle cx="107" cy="90" r="4.5" fill="#252518" stroke="#303030" stroke-width="0.5"/>
+  <circle cx="107" cy="90" r="3" fill="#e0d898" opacity="0.55"/>
+
+  <!-- Red Essential Dot -->
+  <circle cx="20" cy="90" r="5.5" fill="#dc2626" stroke="#8c1515" stroke-width="0.9"/>
+  <circle cx="18.5" cy="88.5" r="2" fill="rgba(255,255,255,0.22)"/>
+
+  <!-- NOTHING text (darker on white) -->
+  <text x="64" y="194" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="7.5" letter-spacing="4.5" fill="#aaa">NOTHING</text>
+  <text x="64" y="248" text-anchor="middle" font-family="Arial" font-size="3.8" fill="#b8b8b4" opacity="0.5">CE  IP65  ⊕</text>
+</g>
+
+<!-- Labels v3 -->
+<text x="1492" y="490" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="11" letter-spacing="2.5" fill="#888">BACK</text>
+<text x="1299" y="507" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="8" letter-spacing="1.5" fill="#aaa">Black</text>
+<text x="1445" y="507" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="8" letter-spacing="1.5" fill="#aaa">Lunar White</text>
+
+<!-- =====================================================================
+     VIEW 4: SIDE PROFILE (closed book-fold, from open edge)
+     Shows two panels + hinge as seen from the opening/closing edge
+     Center:(270,724)  Profile: 392w × 56h  TL:(74,696)
+     ===================================================================== -->
+<g transform="translate(74,696)" filter="url(#shadowSm)">
+  <!-- Panel A (camera/cover display panel) — left slab -->
+  <rect x="0" y="0" width="192" height="56" rx="12" fill="url(#blackBody)" stroke="#3c3c3c" stroke-width="1.2"/>
+  <rect x="1" y="1" width="190" height="3.5" rx="2" fill="rgba(255,255,255,0.07)"/>
+  <!-- Screen edge visible on inside face -->
+  <rect x="4" y="42" width="184" height="10" rx="4" fill="#060606" opacity="0.9"/>
+  <!-- NOTHING text -->
+  <text x="96" y="30" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="7" letter-spacing="5" fill="#343434">NOTHING</text>
+  <!-- Camera bump protrusion on outer edge -->
+  <rect x="-5" y="9" width="9" height="24" rx="4" fill="#141414" stroke="#2c2c2c" stroke-width="0.8"/>
+
+  <!-- Hinge mechanism (spine) — center -->
+  <rect x="194" y="-5" width="20" height="66" rx="8" fill="url(#hingeBlack)" stroke="#3c3c3c" stroke-width="1.2"/>
+  <rect x="198" y="1" width="2" height="54" rx="1" fill="rgba(255,255,255,0.06)"/>
+  <rect x="202" y="1" width="2" height="54" rx="1" fill="rgba(255,255,255,0.09)"/>
+  <rect x="206" y="1" width="2" height="54" rx="1" fill="rgba(255,255,255,0.06)"/>
+  <!-- Fold crease line -->
+  <line x1="192" y1="28" x2="216" y2="28" stroke="rgba(0,0,0,0.35)" stroke-width="1.2"/>
+
+  <!-- Panel B (inner display panel) — right slab -->
+  <rect x="216" y="0" width="192" height="56" rx="12" fill="url(#blackBody)" stroke="#3c3c3c" stroke-width="1.2"/>
+  <rect x="217" y="1" width="190" height="3.5" rx="2" fill="rgba(255,255,255,0.07)"/>
+  <!-- Screen edge (inside face) -->
+  <rect x="220" y="4" width="184" height="10" rx="4" fill="#060606" opacity="0.9"/>
+  <text x="312" y="38" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="7" letter-spacing="5" fill="#343434">NOTHING</text>
+
+  <!-- USB-C port on bottom -->
+  <rect x="282" y="47" width="26" height="9" rx="4.5" fill="#060606" stroke="#222" stroke-width="0.5"/>
+  <!-- Speaker grilles -->
+  <circle cx="360" cy="26" r="1.6" fill="#2a2a2a"/>
+  <circle cx="366" cy="26" r="1.6" fill="#2a2a2a"/>
+  <circle cx="372" cy="26" r="1.6" fill="#2a2a2a"/>
+  <circle cx="378" cy="26" r="1.6" fill="#2a2a2a"/>
+  <circle cx="360" cy="34" r="1.6" fill="#2a2a2a"/>
+  <circle cx="366" cy="34" r="1.6" fill="#2a2a2a"/>
+  <circle cx="372" cy="34" r="1.6" fill="#2a2a2a"/>
+  <circle cx="378" cy="34" r="1.6" fill="#2a2a2a"/>
+</g>
+<!-- Reflection v4 -->
+<g transform="translate(74,754) scale(1,-0.26)" opacity="0.07">
+  <rect x="0" y="0" width="192" height="56" rx="12" fill="#1a1a1a"/>
+  <rect x="216" y="0" width="192" height="56" rx="12" fill="#1a1a1a"/>
+  <rect x="194" y="-5" width="20" height="66" rx="8" fill="#444"/>
+</g>
+<!-- Label v4 -->
+<text x="270" y="812" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="11" letter-spacing="2.5" fill="#888">SIDE PROFILE</text>
+
+<!-- =====================================================================
+     VIEW 5: TRANSPARENT BACK — MACRO CLOSE-UP
+     Shows internals through semi-transparent back + Glyph Matrix detail
+     TL:(628,584)  Size:620w × 282h
+     ===================================================================== -->
+<g transform="translate(628,584)" filter="url(#shadowSm)">
+
+  <!-- ── PANEL A: Camera panel back (transparent, showing internals) ── -->
+  <rect x="0" y="18" width="298" height="252" rx="26" fill="url(#transBack)" stroke="#c2c2bc" stroke-width="1.5"/>
+  <!-- Circuit/internals pattern -->
+  <rect x="2" y="20" width="294" height="248" rx="24" fill="url(#circPat)" opacity="0.52"/>
+  <!-- Frosted overlay -->
+  <rect x="2" y="20" width="294" height="248" rx="24" fill="rgba(245,245,240,0.16)"/>
+
+  <!-- Battery pack (visible through transparent back) -->
+  <rect x="155" y="32" width="126" height="62" rx="8" fill="none" stroke="#b0b0aa" stroke-width="1" opacity="0.68"/>
+  <rect x="157" y="34" width="84" height="58" rx="6" fill="rgba(168,198,172,0.16)"/>
+  <text x="218" y="65" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="7.5" fill="#a8a8a2" opacity="0.65" letter-spacing="0.5">BATTERY</text>
+  <text x="218" y="76" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="5.5" fill="#a8a8a2" opacity="0.48">5080 mAh</text>
+
+  <!-- Snapdragon 7 Gen 4 chip -->
+  <rect x="160" y="110" width="56" height="46" rx="6" fill="rgba(138,138,188,0.18)" stroke="#aaaab0" stroke-width="0.9" opacity="0.58"/>
+  <rect x="170" y="120" width="36" height="26" rx="4" fill="rgba(158,158,200,0.22)" stroke="#b0b0b8" stroke-width="0.7" opacity="0.58"/>
+  <text x="188" y="136" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="5.5" fill="#9898a8" opacity="0.58">SD 7 Gen 4</text>
+
+  <!-- NFC coil ring -->
+  <circle cx="222" cy="196" r="60" fill="none" stroke="#b0b0aa" stroke-width="0.9" opacity="0.42"/>
+  <circle cx="222" cy="196" r="46" fill="none" stroke="#b0b0aa" stroke-width="0.7" opacity="0.30"/>
+  <circle cx="222" cy="196" r="32" fill="none" stroke="#b0b0aa" stroke-width="0.5" opacity="0.20"/>
+  <text x="222" y="199" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="6" fill="#a8a8a2" opacity="0.45">NFC</text>
+
+  <!-- Periscope telephoto module (visible as elongated form) -->
+  <rect x="165" y="165" width="22" height="52" rx="6" fill="rgba(78,78,98,0.18)" stroke="#a2a2aa" stroke-width="0.8" opacity="0.55"/>
+  <ellipse cx="176" cy="191" rx="7.5" ry="7.5" fill="none" stroke="#9898a2" stroke-width="0.6" opacity="0.48"/>
+
+  <!-- ── GLYPH MATRIX — LARGE CLOSE-UP ── -->
+  <!-- Camera housing in macro -->
+  <rect x="6" y="26" width="146" height="138" rx="20" fill="#141414" stroke="#1e1e1e" stroke-width="1.5"/>
+  <rect x="8" y="28" width="142" height="134" rx="18" fill="#0e0e0e"/>
+
+  <!-- Glyph Matrix display (large) -->
+  <rect x="12" y="32" width="134" height="72" rx="12" fill="#080808" stroke="#181818" stroke-width="0.5"/>
+  <!-- Enlarged dot matrix (pitch=10px, start x=16, y=36) -->
+  <g fill="#ffffff" filter="url(#glowLED)">
+    <!-- Each dot 7×7, gap 3 → pitch 10px -->
+    <rect x="16" y="86" width="7" height="7" rx="1.5"/>
+    <rect x="16" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="26" y="64" width="7" height="7" rx="1.5"/>
+    <rect x="26" y="75" width="7" height="7" rx="1.5"/>
+    <rect x="26" y="86" width="7" height="7" rx="1.5"/>
+    <rect x="26" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="36" y="36" width="7" height="7" rx="1.5"/>
+    <rect x="36" y="47" width="7" height="7" rx="1.5"/>
+    <rect x="36" y="58" width="7" height="7" rx="1.5"/>
+    <rect x="36" y="69" width="7" height="7" rx="1.5"/>
+    <rect x="36" y="80" width="7" height="7" rx="1.5"/>
+    <rect x="36" y="91" width="7" height="7" rx="1.5"/>
+    <rect x="36" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="46" y="36" width="7" height="7" rx="1.5"/>
+    <rect x="46" y="47" width="7" height="7" rx="1.5"/>
+    <rect x="46" y="58" width="7" height="7" rx="1.5"/>
+    <rect x="46" y="69" width="7" height="7" rx="1.5"/>
+    <rect x="46" y="80" width="7" height="7" rx="1.5"/>
+    <rect x="46" y="91" width="7" height="7" rx="1.5"/>
+    <rect x="46" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="56" y="47" width="7" height="7" rx="1.5"/>
+    <rect x="56" y="58" width="7" height="7" rx="1.5"/>
+    <rect x="56" y="69" width="7" height="7" rx="1.5"/>
+    <rect x="56" y="80" width="7" height="7" rx="1.5"/>
+    <rect x="56" y="91" width="7" height="7" rx="1.5"/>
+    <rect x="56" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="66" y="36" width="7" height="7" rx="1.5"/>
+    <rect x="66" y="47" width="7" height="7" rx="1.5"/>
+    <rect x="66" y="58" width="7" height="7" rx="1.5"/>
+    <rect x="66" y="69" width="7" height="7" rx="1.5"/>
+    <rect x="66" y="80" width="7" height="7" rx="1.5"/>
+    <rect x="66" y="91" width="7" height="7" rx="1.5"/>
+    <rect x="66" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="76" y="36" width="7" height="7" rx="1.5"/>
+    <rect x="76" y="47" width="7" height="7" rx="1.5"/>
+    <rect x="76" y="58" width="7" height="7" rx="1.5"/>
+    <rect x="76" y="69" width="7" height="7" rx="1.5"/>
+    <rect x="76" y="80" width="7" height="7" rx="1.5"/>
+    <rect x="76" y="91" width="7" height="7" rx="1.5"/>
+    <rect x="76" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="86" y="47" width="7" height="7" rx="1.5"/>
+    <rect x="86" y="58" width="7" height="7" rx="1.5"/>
+    <rect x="86" y="69" width="7" height="7" rx="1.5"/>
+    <rect x="86" y="80" width="7" height="7" rx="1.5"/>
+    <rect x="86" y="91" width="7" height="7" rx="1.5"/>
+    <rect x="86" y="97" width="7" height="7" rx="1.5"/>
+    <rect x="96" y="64" width="7" height="7" rx="1.5" opacity="0.88"/>
+    <rect x="96" y="75" width="7" height="7" rx="1.5" opacity="0.88"/>
+    <rect x="96" y="86" width="7" height="7" rx="1.5" opacity="0.88"/>
+    <rect x="96" y="97" width="7" height="7" rx="1.5" opacity="0.88"/>
+    <rect x="106" y="75" width="7" height="7" rx="1.5" opacity="0.75"/>
+    <rect x="106" y="86" width="7" height="7" rx="1.5" opacity="0.75"/>
+    <rect x="106" y="97" width="7" height="7" rx="1.5" opacity="0.75"/>
+    <rect x="116" y="86" width="7" height="7" rx="1.5" opacity="0.62"/>
+    <rect x="116" y="97" width="7" height="7" rx="1.5" opacity="0.62"/>
+    <rect x="126" y="97" width="7" height="7" rx="1.5" opacity="0.50"/>
+  </g>
+
+  <!-- Main lens (50MP, large in macro) -->
+  <circle cx="42" cy="136" r="28" fill="#060808" stroke="#1c1c1c" stroke-width="2"/>
+  <circle cx="42" cy="136" r="23" fill="url(#lensGrad)"/>
+  <circle cx="42" cy="136" r="23" fill="url(#lensShine)"/>
+  <circle cx="42" cy="136" r="13" fill="#020406" opacity="0.96"/>
+  <!-- Large Glyph LED ring -->
+  <circle cx="42" cy="136" r="26.5" fill="none" stroke="rgba(255,255,255,0.70)" stroke-width="1.5" stroke-dasharray="9,6" filter="url(#glowLED)"/>
+  <text x="42" y="172" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="6.5" fill="#555">50MP  f/1.88</text>
+
+  <!-- Ultrawide (8MP) -->
+  <circle cx="97" cy="136" r="21" fill="#060808" stroke="#1c1c1c" stroke-width="1.8"/>
+  <circle cx="97" cy="136" r="17" fill="url(#lensGrad)"/>
+  <circle cx="97" cy="136" r="17" fill="url(#lensShine)"/>
+  <circle cx="97" cy="136" r="9" fill="#020406" opacity="0.96"/>
+  <text x="97" y="164" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="6.5" fill="#555">8MP  f/2.2</text>
+
+  <!-- Periscope telephoto (50MP) -->
+  <circle cx="138" cy="130" r="18" fill="#060808" stroke="#1c1c1c" stroke-width="1.8"/>
+  <circle cx="138" cy="130" r="14.5" fill="url(#lensGrad)"/>
+  <circle cx="138" cy="130" r="14.5" fill="url(#lensShine)"/>
+  <circle cx="138" cy="130" r="8" fill="#020406" opacity="0.96"/>
+  <text x="138" y="155" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="6.5" fill="#555">50MP  3.5×</text>
+
+  <!-- Flash -->
+  <circle cx="138" cy="112" r="5.5" fill="#242418" stroke="#303030" stroke-width="0.5"/>
+  <circle cx="138" cy="112" r="3.5" fill="#dcd890" opacity="0.5"/>
+
+  <!-- Red Essential Dot (large in macro) -->
+  <circle cx="20" cy="112" r="7.5" fill="#dc2626" stroke="#8a1212" stroke-width="1.2"/>
+  <circle cx="17" cy="109" r="2.8" fill="rgba(255,255,255,0.22)"/>
+
+  <!-- ── PANEL B: Other panel back shown at angle (hinge area) ── -->
+  <!-- Represents: when open and viewing from back, you see camera panel left + cover-side panel right -->
+  <g transform="translate(308,18)">
+    <!-- Cover-display panel back (clean, showing hinge mechanism between panels) -->
+    <rect x="0" y="0" width="300" height="252" rx="24" fill="url(#transBack)" stroke="#bbbbb6" stroke-width="1.5" transform="skewX(-3)"/>
+    <rect x="2" y="2" width="296" height="248" rx="22" fill="url(#circPat)" opacity="0.42" transform="skewX(-3)"/>
+    <rect x="2" y="2" width="296" height="248" rx="22" fill="rgba(242,242,237,0.15)" transform="skewX(-3)"/>
+
+    <!-- Glyph LED ring visible (large circular LED on back) -->
+    <circle cx="50" cy="148" r="68" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="2" stroke-dasharray="14,9" filter="url(#glowLED)" transform="skewX(-3)"/>
+    <circle cx="50" cy="148" r="52" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.8" transform="skewX(-3)"/>
+
+    <!-- Hinge fold label -->
+    <text x="148" y="88" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="7.5" fill="#b0b0aa" opacity="0.55" transform="skewX(-3)">← FOLD ←</text>
+
+    <!-- Internal circuit detail -->
+    <text x="200" y="190" text-anchor="middle" font-family="'Helvetica Neue',Arial" font-size="8" fill="#b0b0a8" opacity="0.38" letter-spacing="1" transform="skewX(-3)">nothing.</text>
+
+    <!-- Hinge mechanism line between the two panels -->
+    <line x1="-6" y1="0" x2="-6" y2="252" stroke="#b8b8b2" stroke-width="2" stroke-dasharray="4,4" opacity="0.5"/>
+  </g>
+</g>
+
+<!-- Label v5 -->
+<text x="1118" y="882" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="11" letter-spacing="2.5" fill="#888">GLYPH MATRIX · TRANSPARENT BACK</text>
+
+<!-- =====================================================================
+     CONCEPT TITLE (bottom center)
+     ===================================================================== -->
+<text x="900" y="858" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="10" letter-spacing="3.5" fill="#aaa">NOTHING PHONE (4a) PRO FOLD — CONCEPT</text>
+
+</svg>
+</body>
+</html>
