@@ -23,6 +23,7 @@ let finalTranscript = "";
 let accumulatedTranscript = "";
 let translateTimer = null;
 let micPermissionGranted = false;
+let activeMicStream = null; // Track active mic stream for clean release
 
 // ========== Platform / OS Detection ==========
 const ua = navigator.userAgent;
@@ -282,17 +283,19 @@ async function startRecording() {
   const hasPermission = await ensureMicPermission();
   if (!hasPermission) return;
 
+  // Release any leftover mic stream from previous session
+  releaseMicStream();
+
   // iOS: forcefully re-acquire mic stream before each session.
   // Without this, 2nd+ recordings silently fail because iOS WebKit
   // releases the audio session after the previous recognition ends.
   if (isIOS) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((track) => track.stop());
+      activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
       console.warn("[iOS] mic re-acquire failed:", e);
     }
-    // Small delay to let iOS release/re-init audio session
+    // Small delay to let iOS init audio session
     await new Promise((r) => setTimeout(r, 300));
   }
 
@@ -327,6 +330,8 @@ function stopRecording() {
     try { recognition.abort(); } catch (e) { /* ignore */ }
     recognition = null;
   }
+  // Explicitly release mic stream so iOS stops showing the mic indicator
+  releaseMicStream();
 
   micBtn.classList.remove("recording");
   micIcon.classList.remove("hidden");
@@ -336,7 +341,29 @@ function stopRecording() {
   micLabel.classList.remove("error");
 
   if (finalTranscript.trim()) {
-    translateText(finalTranscript, true);
+    // iOS: copy the CURRENTLY DISPLAYED translation synchronously, within
+    // the user's tap gesture context. This is the only reliable way to
+    // auto-copy on iOS — clipboard APIs fail after any async operation.
+    // The real-time translation (from scheduleTranslation during recording)
+    // is already showing the translated text.
+    let copiedInGesture = false;
+    if (isIOS && autoCopyToggle.checked) {
+      const displayedTranslation = getTextContent(translationOutput);
+      if (displayedTranslation) {
+        fallbackCopy(displayedTranslation);
+        copiedInGesture = true;
+      }
+    }
+
+    translateText(finalTranscript, true, copiedInGesture);
+  }
+}
+
+/** Release active mic stream tracks to free the microphone hardware */
+function releaseMicStream() {
+  if (activeMicStream) {
+    activeMicStream.getTracks().forEach((track) => track.stop());
+    activeMicStream = null;
   }
 }
 
@@ -372,7 +399,7 @@ function scheduleTranslation(text) {
   translateTimer = setTimeout(() => translateText(text, false), 500);
 }
 
-async function translateText(text, saveToHistory) {
+async function translateText(text, saveToHistory, alreadyCopied) {
   if (!text.trim()) return;
 
   const sourceLang = inputLangSelect.value.split("-")[0];
@@ -385,8 +412,8 @@ async function translateText(text, saveToHistory) {
     translationOutput.appendChild(span);
     if (saveToHistory) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
-      if (autoCopyToggle.checked) {
-        autoCopyResult(text);
+      if (autoCopyToggle.checked && !alreadyCopied) {
+        writeToClipboard(text);
       }
     }
     return;
@@ -413,8 +440,10 @@ async function translateText(text, saveToHistory) {
         addHistory(text, translated, inputLangSelect.value, outputLangSelect.value);
       }
 
-      if (saveToHistory && autoCopyToggle.checked) {
-        autoCopyResult(translated);
+      if (saveToHistory && autoCopyToggle.checked && !alreadyCopied) {
+        // Desktop: clipboard works fine after async
+        // iOS: already copied in stopRecording gesture context
+        writeToClipboard(translated);
       }
     } else {
       translationOutput.innerHTML =
@@ -424,20 +453,6 @@ async function translateText(text, saveToHistory) {
     console.error("Translation error:", error);
     translationOutput.innerHTML =
       '<span class="placeholder">翻訳エラー: ネットワークを確認してください。</span>';
-  }
-}
-
-/**
- * Auto-copy translated text. On desktop, directly write to clipboard.
- * On iOS/mobile, clipboard APIs fail outside user-gesture context (after async fetch),
- * so show a tap-to-copy overlay that the user can tap once to copy reliably.
- */
-function autoCopyResult(text) {
-  if (isIOS) {
-    // iOS: clipboard APIs fail after async operations — show tap-to-copy overlay
-    showCopyOverlay(text);
-  } else {
-    writeToClipboard(text);
   }
 }
 
@@ -504,40 +519,6 @@ function fallbackCopy(text) {
     showToast("コピーに失敗しました");
     return Promise.resolve(false);
   }
-}
-
-/**
- * Show a tap-to-copy overlay when clipboard write is not possible
- * (e.g. iOS PWA outside user gesture and ClipboardItem not supported).
- */
-function showCopyOverlay(text) {
-  // Remove any existing overlay
-  const existing = document.getElementById("copy-overlay");
-  if (existing) existing.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "copy-overlay";
-  overlay.style.cssText =
-    "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);" +
-    "background:#6c5ce7;color:#fff;padding:14px 28px;border-radius:12px;" +
-    "font-size:16px;z-index:10000;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.4);" +
-    "text-align:center;max-width:80vw;animation:fadeIn .2s ease;";
-  overlay.textContent = "タップしてコピー: " + (text.length > 30 ? text.slice(0, 30) + "…" : text);
-
-  overlay.addEventListener("click", () => {
-    writeToClipboard(text);
-    overlay.remove();
-  });
-  overlay.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    writeToClipboard(text);
-    overlay.remove();
-  });
-
-  document.body.appendChild(overlay);
-
-  // Auto-dismiss after 6 seconds
-  setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 6000);
 }
 
 function copyToClipboard(element, btn) {
@@ -691,6 +672,7 @@ document.addEventListener("visibilitychange", () => {
         try { recognition.abort(); } catch (e) { /* ignore */ }
         recognition = null;
       }
+      releaseMicStream();
       micBtn.classList.remove("recording");
       micIcon.classList.remove("hidden");
       stopIcon.classList.add("hidden");
