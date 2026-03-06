@@ -105,13 +105,15 @@ const WHISPER_MODEL = "Xenova/whisper-tiny";
 const TRANSFORMERS_CDN = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1";
 
 // ========== STT Mode Detection ==========
-// Use Whisper WASM when Web Speech API is unavailable (e.g. iOS PWA standalone)
+// Try Web Speech API first on ALL platforms (including iOS PWA).
+// Only fall back to Whisper WASM when SpeechRecognition is truly unavailable.
+// Previous approach forced Whisper for iOS PWA standalone, but the 40MB+ model
+// download frequently fails due to CSP/network/WKWebView restrictions.
+// Web Speech API works on iOS 17+ even in standalone mode.
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
-// iOS PWA standalone: SpeechRecognition exists but silently fails.
-// Force Whisper mode for reliable voice input.
-const useWhisperSTT = (isIOS && isPWAStandalone) || !SpeechRecognition;
+let useWhisperSTT = !SpeechRecognition;
 
 if (!SpeechRecognition && !useWhisperSTT) {
   unsupportedBanner.classList.remove("hidden");
@@ -427,6 +429,11 @@ function createRecognition() {
   };
 
   rec.onresult = (event) => {
+    // Guard: ignore results after recording has stopped.
+    // recognition.abort()/stop() can cause late onresult events
+    // that would overwrite the display set up by stopWebSpeechRecording().
+    if (!isRecording) return;
+
     let interim = "";
     let sessionFinal = "";
 
@@ -491,7 +498,17 @@ function createRecognition() {
     restartAttempts++;
 
     if (restartAttempts > MAX_RESTART_ATTEMPTS) {
-      console.warn("[recognition] max restart attempts reached, stopping");
+      console.warn("[recognition] max restart attempts reached");
+      // On iOS PWA: Web Speech API silently fails. Switch to Whisper as fallback.
+      if (isIOS && isPWAStandalone && !useWhisperSTT) {
+        console.log("[recognition] switching to Whisper fallback for iOS PWA");
+        useWhisperSTT = true;
+        isRecording = false;
+        recognition = null;
+        resetMicUI();
+        micLabel.textContent = "音声認識を切替中... もう一度タップしてください";
+        return;
+      }
       stopRecording();
       micLabel.textContent = "接続が切れました。再度タップしてください。";
       return;
@@ -673,9 +690,14 @@ function stopRecording() {
 }
 
 function stopWebSpeechRecording() {
-  // Collect the best available text BEFORE stopping recognition.
-  // On mobile (non-continuous mode), interim results may not have been
-  // finalized yet. We capture the displayed text as a robust fallback.
+  // 1. Cancel any pending scheduled translation from interim results.
+  //    Without this, a stale scheduleTranslation() timer could fire AFTER
+  //    we start the final translation, causing double translation + display flicker.
+  clearTimeout(translateTimer);
+
+  // 2. Collect the best available text BEFORE stopping recognition.
+  //    On mobile (non-continuous mode), interim results may not have been
+  //    finalized yet. We capture the displayed text as a robust fallback.
   let bestText = finalTranscript.trim();
   if (!bestText && lastInterimText) {
     bestText = lastInterimText.trim();
@@ -685,12 +707,16 @@ function stopWebSpeechRecording() {
     bestText = getTextContent(recognitionOutput);
   }
 
+  // 3. Detach ALL event handlers BEFORE aborting to prevent post-abort
+  //    onresult/onend from overwriting the display or re-triggering translation.
+  //    This is critical: abort()/stop() can cause late events to fire.
   if (recognition) {
-    try {
-      // Use stop() instead of abort() to give the recognizer a chance
-      // to produce a final result. abort() discards pending results.
-      recognition.stop();
-    } catch (e) { /* ignore */ }
+    recognition.onresult = null;
+    recognition.onend = null;
+    recognition.onerror = null;
+    recognition.onstart = null;
+    recognition.onaudiostart = null;
+    try { recognition.abort(); } catch (e) { /* ignore */ }
     recognition = null;
   }
   // Explicitly release mic stream so iOS stops showing the mic indicator
@@ -889,6 +915,9 @@ if (!isMobile) {
 function scheduleTranslation(text) {
   clearTimeout(translateTimer);
   if (!text.trim()) return;
+  // Only schedule live translation preview while actively recording.
+  // After recording stops, translation is handled by stopWebSpeechRecording().
+  if (!isRecording) return;
   translateTimer = setTimeout(() => translateText(text, false), 500);
 }
 
@@ -1193,6 +1222,9 @@ document.addEventListener("visibilitychange", () => {
       isRecording = false;
 
       if (recognition) {
+        recognition.onresult = null;
+        recognition.onend = null;
+        recognition.onerror = null;
         try { recognition.abort(); } catch (e) { /* ignore */ }
         recognition = null;
       }
