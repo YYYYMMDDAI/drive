@@ -463,3 +463,46 @@ select:focus {
     height: 28px;
   }
 }
+
+/* ========== Mobile-specific (set by JS) ========== */
+body.is-mobile .mic-btn {
+  width: 80px;
+  height: 80px;
+  /* Larger tap target on mobile */
+}
+
+body.is-mobile .mic-btn svg {
+  width: 34px;
+  height: 34px;
+}
+
+body.is-mobile .mic-container {
+  padding: 16px 0;
+}
+
+body.is-mobile .mic-label {
+  font-size: 0.9rem;
+}
+
+/* Prevent text selection on mic button (mobile) */
+.mic-btn {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* iOS safe area padding */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body.platform-ios {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  body.platform-ios .toast {
+    bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  body.platform-ios .unsupported-banner {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}

@@ -14,6 +14,7 @@ const autoCopyToggle = document.getElementById("auto-copy-toggle");
 const historyList = document.getElementById("history-list");
 const clearHistoryBtn = document.getElementById("clear-history");
 const toast = document.getElementById("toast");
+const shortcutHint = document.getElementById("shortcut-hint");
 
 // ========== State ==========
 let isRecording = false;
@@ -23,12 +24,74 @@ let accumulatedTranscript = "";
 let translateTimer = null;
 let micPermissionGranted = false;
 
-// ========== Environment Detection ==========
-const isElectron = navigator.userAgent.includes("Electron");
+// ========== Platform / OS Detection ==========
+const ua = navigator.userAgent;
+const isElectron = ua.includes("Electron");
+const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/.test(ua);
+const isMobile = isIOS || isAndroid || ("ontouchstart" in window && window.innerWidth < 768);
+const isMac = !isMobile && /Mac/.test(navigator.platform);
+// isWindows/Linux = desktop but not Mac
+
+const platform = (() => {
+  if (isElectron) return "electron";
+  if (isIOS) return "ios";
+  if (isAndroid) return "android";
+  if (isMac) return "mac";
+  return "windows"; // default desktop
+})();
+
+// Platform-specific labels
+const labels = (() => {
+  switch (platform) {
+    case "ios":
+    case "android":
+      return {
+        tapStart: "タップして録音開始",
+        tapStop: "録音中... タップして停止",
+        shortcutHTML: "", // no keyboard shortcuts on mobile
+      };
+    case "mac":
+      return {
+        tapStart: "クリック or ⌥R で録音開始",
+        tapStop: "録音中... クリック or ⌥R で停止",
+        shortcutHTML:
+          '<kbd>⌥</kbd><kbd>R</kbd> 録音 &nbsp;|&nbsp; <kbd>⌥</kbd><kbd>C</kbd> コピー &nbsp;|&nbsp; <kbd>Space</kbd> でも操作可',
+      };
+    case "electron":
+      return {
+        tapStart: "クリック or Alt+R で録音開始",
+        tapStop: "録音中... クリック or Alt+R で停止",
+        shortcutHTML:
+          '<kbd>Alt</kbd>+<kbd>R</kbd> 録音（グローバル） &nbsp;|&nbsp; <kbd>Alt</kbd>+<kbd>C</kbd> コピー',
+      };
+    default: // windows / linux
+      return {
+        tapStart: "クリック or Alt+R で録音開始",
+        tapStop: "録音中... クリック or Alt+R で停止",
+        shortcutHTML:
+          '<kbd>Alt</kbd>+<kbd>R</kbd> 録音 &nbsp;|&nbsp; <kbd>Alt</kbd>+<kbd>C</kbd> コピー &nbsp;|&nbsp; <kbd>Space</kbd> でも操作可',
+      };
+  }
+})();
+
+// Apply platform-specific UI on load
+micLabel.textContent = labels.tapStart;
+if (shortcutHint) {
+  if (labels.shortcutHTML) {
+    shortcutHint.innerHTML = labels.shortcutHTML;
+  } else {
+    shortcutHint.style.display = "none";
+  }
+}
+
+// Add platform class to body for CSS hooks
+document.body.classList.add("platform-" + platform);
+if (isMobile) document.body.classList.add("is-mobile");
 
 // ========== Constants ==========
 const HISTORY_KEY = "voiceInputHistory";
-const HISTORY_TTL = 60 * 60 * 1000; // 1 hour in ms
+const HISTORY_TTL = 60 * 60 * 1000; // 1 hour
 const MIC_PERM_KEY = "voiceInputMicGranted";
 const AUTO_COPY_KEY = "voiceInputAutoCopy";
 
@@ -38,13 +101,17 @@ const SpeechRecognition =
 
 if (!SpeechRecognition) {
   unsupportedBanner.classList.remove("hidden");
+  // iOS-specific message
+  if (isIOS) {
+    unsupportedBanner.textContent =
+      "iOSのSafariでは音声認識APIが制限されています。Androidまたはデスクトップ版Chromeをお使いください。";
+  }
   micBtn.disabled = true;
   micBtn.style.opacity = "0.4";
   micBtn.style.cursor = "not-allowed";
 }
 
 // ========== Restore Settings ==========
-// Auto-copy toggle
 if (localStorage.getItem(AUTO_COPY_KEY) === "true") {
   autoCopyToggle.checked = true;
 }
@@ -53,8 +120,6 @@ autoCopyToggle.addEventListener("change", () => {
 });
 
 // ========== Microphone Permission ==========
-// In Electron: permissions are auto-granted by main process, skip all checks
-// In Browser: check via permissions API, then getUserMedia on first use
 (async function initMicPermission() {
   if (isElectron) {
     micPermissionGranted = true;
@@ -67,7 +132,7 @@ autoCopyToggle.addEventListener("change", () => {
         micPermissionGranted = true;
       }
     } catch (e) {
-      // permissions.query not supported — will ask on first use
+      // permissions.query not supported (e.g. iOS) — will ask on first use
     }
   }
 })();
@@ -92,7 +157,8 @@ async function ensureMicPermission() {
 function createRecognition() {
   const rec = new SpeechRecognition();
   rec.lang = inputLangSelect.value;
-  rec.continuous = true;
+  // On mobile: non-continuous mode is more reliable
+  rec.continuous = !isMobile;
   rec.interimResults = true;
   rec.maxAlternatives = 1;
 
@@ -115,7 +181,6 @@ function createRecognition() {
 
     finalTranscript = accumulatedTranscript + sessionFinal;
 
-    // Update UI
     recognitionOutput.innerHTML = "";
     if (finalTranscript) {
       const finalSpan = document.createElement("span");
@@ -132,7 +197,6 @@ function createRecognition() {
       showPlaceholder(recognitionOutput, "ここに認識結果が表示されます...");
     }
 
-    // Debounced translation
     scheduleTranslation(finalTranscript + interim);
   };
 
@@ -143,7 +207,11 @@ function createRecognition() {
       micLabel.classList.add("error");
       stopRecording();
     } else if (event.error === "no-speech") {
-      console.log("No speech detected, continuing...");
+      // Not fatal on desktop; on mobile, restart
+      if (isMobile && isRecording) {
+        accumulatedTranscript = finalTranscript;
+        restartRecognition();
+      }
     } else if (event.error !== "aborted") {
       stopRecording();
     }
@@ -152,22 +220,34 @@ function createRecognition() {
   rec.onend = () => {
     if (isRecording) {
       accumulatedTranscript = finalTranscript;
-      try {
-        recognition = createRecognition();
-        recognition.start();
-      } catch (e) {
-        console.error("Failed to restart recognition:", e);
-        stopRecording();
-      }
+      restartRecognition();
     }
   };
 
   return rec;
 }
 
+function restartRecognition() {
+  try {
+    recognition = createRecognition();
+    recognition.start();
+  } catch (e) {
+    console.error("Failed to restart recognition:", e);
+    stopRecording();
+  }
+}
+
 // ========== Recording Controls ==========
+let toggleLock = false; // Prevent double-fire from touch+click
+
 async function toggleRecording() {
+  if (toggleLock) return;
   if (!SpeechRecognition) return;
+
+  // Lock for 400ms to prevent touch+click double-fire
+  toggleLock = true;
+  setTimeout(() => { toggleLock = false; }, 400);
+
   if (isRecording) {
     stopRecording();
   } else {
@@ -190,7 +270,7 @@ async function startRecording() {
     micBtn.classList.add("recording");
     micIcon.classList.add("hidden");
     stopIcon.classList.remove("hidden");
-    micLabel.textContent = "録音中... タップ or Alt+R で停止";
+    micLabel.textContent = labels.tapStop;
     micLabel.classList.add("recording");
     micLabel.classList.remove("error");
     recognitionOutput.innerHTML =
@@ -217,66 +297,66 @@ function stopRecording() {
   micBtn.classList.remove("recording");
   micIcon.classList.remove("hidden");
   stopIcon.classList.add("hidden");
-  micLabel.textContent = "タップ or Alt+R で録音開始";
+  micLabel.textContent = labels.tapStart;
   micLabel.classList.remove("recording");
   micLabel.classList.remove("error");
 
-  // Final translation & auto-copy
   if (finalTranscript.trim()) {
-    translateText(finalTranscript, true); // true = save to history
+    translateText(finalTranscript, true);
     if (autoCopyToggle.checked) {
       autoCopyToClipboard(finalTranscript);
     }
   }
 }
 
-// ========== Click & Touch Handlers ==========
+// ========== Click & Touch — single handler with debounce ==========
 micBtn.addEventListener("click", (e) => {
   e.preventDefault();
   toggleRecording();
 });
 
+// On touch devices: use touchend and prevent the subsequent click
 micBtn.addEventListener("touchend", (e) => {
   e.preventDefault();
+  // toggleLock inside toggleRecording() prevents double-fire
   toggleRecording();
 });
 
 // ========== Global Keyboard Shortcuts ==========
-// Alt+R — toggle recording (no conflict with browser shortcuts)
-// Alt+C — copy latest translation/recognition to clipboard
-// Space  — toggle recording (when not in form control)
-document.addEventListener("keydown", (event) => {
-  // Alt+R: toggle recording
-  if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyR") {
-    event.preventDefault();
-    event.stopPropagation();
-    toggleRecording();
-    return;
-  }
-
-  // Alt+C: copy latest result to clipboard
-  if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyC") {
-    event.preventDefault();
-    event.stopPropagation();
-    // Prefer translation, fallback to recognition
-    const transText = getTextContent(translationOutput);
-    const recogText = getTextContent(recognitionOutput);
-    const textToCopy = transText || recogText;
-    if (textToCopy) {
-      autoCopyToClipboard(textToCopy);
+// Only register on devices with keyboards
+if (!isMobile) {
+  document.addEventListener("keydown", (event) => {
+    // Alt+R (Win/Linux) / ⌥R (Mac): toggle recording
+    if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyR") {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleRecording();
+      return;
     }
-    return;
-  }
 
-  // Space bar (when not in form controls)
-  if (
-    event.code === "Space" &&
-    !["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(event.target.tagName)
-  ) {
-    event.preventDefault();
-    toggleRecording();
-  }
-});
+    // Alt+C / ⌥C: copy latest result
+    if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyC") {
+      event.preventDefault();
+      event.stopPropagation();
+      const transText = getTextContent(translationOutput);
+      const recogText = getTextContent(recognitionOutput);
+      const textToCopy = transText || recogText;
+      if (textToCopy) {
+        autoCopyToClipboard(textToCopy);
+      }
+      return;
+    }
+
+    // Space bar (when not in form controls)
+    if (
+      event.code === "Space" &&
+      !["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(event.target.tagName)
+    ) {
+      event.preventDefault();
+      toggleRecording();
+    }
+  });
+}
 
 // ========== Translation ==========
 function scheduleTranslation(text) {
@@ -323,7 +403,6 @@ async function translateText(text, saveToHistory) {
         addHistory(text, translated, inputLangSelect.value, outputLangSelect.value);
       }
 
-      // Auto-copy translation if enabled
       if (saveToHistory && autoCopyToggle.checked) {
         autoCopyToClipboard(translated);
       }
@@ -393,7 +472,6 @@ function getHistory() {
     if (!raw) return [];
     const items = JSON.parse(raw);
     const now = Date.now();
-    // Filter out expired entries
     return items.filter((item) => now - item.timestamp < HISTORY_TTL);
   } catch {
     return [];
@@ -413,7 +491,6 @@ function addHistory(original, translated, inputLang, outputLang) {
     outputLang,
     timestamp: Date.now(),
   });
-  // Keep max 50 items
   if (items.length > 50) items.length = 50;
   saveHistory(items);
   renderHistory();
@@ -441,7 +518,6 @@ function renderHistory() {
       minute: "2-digit",
     });
 
-    div.innerHTML = "";
     const timeEl = document.createElement("div");
     timeEl.className = "history-item-time";
     timeEl.textContent = timeStr;
@@ -462,7 +538,6 @@ function renderHistory() {
     langsEl.textContent = `${item.inputLang} → ${item.outputLang}`;
     div.appendChild(langsEl);
 
-    // Click to copy translation
     div.addEventListener("click", () => {
       autoCopyToClipboard(item.translated);
     });
@@ -476,12 +551,10 @@ clearHistoryBtn.addEventListener("click", () => {
   renderHistory();
 });
 
-// Render on load
 renderHistory();
 
-// Periodic cleanup (every 5 min, remove expired)
 setInterval(() => {
-  const items = getHistory(); // getHistory already filters expired
+  const items = getHistory();
   saveHistory(items);
   renderHistory();
 }, 5 * 60 * 1000);
