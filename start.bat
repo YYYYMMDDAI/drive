@@ -1,32 +1,35 @@
 @echo off
-chcp 65001 >nul
-title Voice Input - セットアップ
+cd /d "%~dp0"
+chcp 65001 >nul 2>nul
+title Voice Input
 
 echo ================================================
-echo   Voice Input - 音声入力 ^& 多言語翻訳
+echo   Voice Input
 echo ================================================
 echo.
 
-:: Check if Node.js is installed
 where node >nul 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo [エラー] Node.js がインストールされていません。
-    echo 以下からインストールしてください:
-    echo   https://nodejs.org/
+    echo [!] Node.js not found.
+    echo     Download: https://nodejs.org/
     echo.
     pause
     exit /b 1
 )
 
-echo [1/2] 依存パッケージをインストール中...
-call npm install --no-audit --no-fund
-if %ERRORLEVEL% neq 0 (
-    echo [エラー] npm install に失敗しました。
-    pause
-    exit /b 1
+if not exist "node_modules\electron" (
+    echo [1/2] Installing dependencies...
+    call npm install --no-audit --no-fund
+    if %ERRORLEVEL% neq 0 (
+        echo [!] npm install failed.
+        pause
+        exit /b 1
+    )
+    echo.
+    echo [2/2] Launching app...
+) else (
+    echo Launching app...
 )
 
 echo.
-echo [2/2] アプリを起動中...
-echo.
-call npm start
+npx electron .

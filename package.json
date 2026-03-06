@@ -13,8 +13,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0"
   },
   "build": {
     "appId": "com.voiceinput.app",
@@ -27,6 +27,8 @@
       "index.html",
       "style.css",
       "app.js",
+      "manifest.json",
+      "sw.js",
       "icons/**"
     ],
     "win": {

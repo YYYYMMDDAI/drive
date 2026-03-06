@@ -1,22 +1,41 @@
 {
   "name": "Voice Input — 音声入力 & 翻訳",
   "short_name": "Voice Input",
-  "description": "音声入力 & 多言語翻訳アプリ",
+  "description": "音声入力でリアルタイム文字起こし & 多言語翻訳。ショートカットキー対応。",
   "start_url": "./index.html",
+  "scope": "./",
+  "id": "voice-input-app",
   "display": "standalone",
   "background_color": "#0f0f14",
   "theme_color": "#6c5ce7",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "categories": ["utilities", "productivity"],
   "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "録音開始",
+      "short_name": "録音",
+      "url": "./index.html?action=record",
+      "icons": [{"src": "icons/icon.svg", "sizes": "any"}]
     }
   ]
 }

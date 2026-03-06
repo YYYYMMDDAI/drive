@@ -1,39 +1,41 @@
 @echo off
-chcp 65001 >nul
-title Voice Input - インストーラー作成
+cd /d "%~dp0"
+chcp 65001 >nul 2>nul
+title Voice Input - Build Installer
 
 echo ================================================
-echo   Voice Input - Windows インストーラー作成
+echo   Voice Input - Build Windows Installer
 echo ================================================
 echo.
 
-:: Check Node.js
 where node >nul 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo [エラー] Node.js がインストールされていません。
+    echo [!] Node.js not found.
+    echo     Download: https://nodejs.org/
     pause
     exit /b 1
 )
 
-echo [1/3] 依存パッケージをインストール中...
-call npm install --no-audit --no-fund
-
-echo.
-echo [2/3] アイコンを確認中...
-if not exist "icons\icon.png" (
-    echo [注意] icons\icon.png が見つかりません。
-    echo icons\generate-icons.html をブラウザで開いてPNGを生成し、
-    echo icons フォルダに配置してください。
-    echo.
-    echo アイコン無しでビルドを続行します...
+if not exist "node_modules" (
+    echo [1/2] Installing dependencies...
+    call npm install --no-audit --no-fund
+) else (
+    echo [OK] Dependencies already installed.
 )
 
 echo.
-echo [3/3] Windows インストーラーをビルド中...
-call npm run build:win
+echo Building Windows installer...
+echo This may take a few minutes on first run.
+echo.
+call npx electron-builder --win
 
 echo.
-echo ================================================
-echo   完了！ dist フォルダにインストーラーが生成されました。
-echo ================================================
+if exist "dist\*.exe" (
+    echo ================================================
+    echo   Done! Installer created in dist\ folder.
+    echo ================================================
+    explorer dist
+) else (
+    echo Build may have completed. Check dist\ folder.
+)
 pause

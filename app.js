@@ -23,6 +23,9 @@ let accumulatedTranscript = "";
 let translateTimer = null;
 let micPermissionGranted = false;
 
+// ========== Environment Detection ==========
+const isElectron = navigator.userAgent.includes("Electron");
+
 // ========== Constants ==========
 const HISTORY_KEY = "voiceInputHistory";
 const HISTORY_TTL = 60 * 60 * 1000; // 1 hour in ms
@@ -50,10 +53,14 @@ autoCopyToggle.addEventListener("change", () => {
 });
 
 // ========== Microphone Permission ==========
-// Check if previously granted and auto-request
+// In Electron: permissions are auto-granted by main process, skip all checks
+// In Browser: check via permissions API, then getUserMedia on first use
 (async function initMicPermission() {
+  if (isElectron) {
+    micPermissionGranted = true;
+    return;
+  }
   if (localStorage.getItem(MIC_PERM_KEY) === "true") {
-    // Previously granted — try to silently confirm
     try {
       const result = await navigator.permissions.query({ name: "microphone" });
       if (result.state === "granted") {
