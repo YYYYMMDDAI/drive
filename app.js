@@ -10,15 +10,24 @@ const outputLangSelect = document.getElementById("output-lang");
 const copyRecognitionBtn = document.getElementById("copy-recognition");
 const copyTranslationBtn = document.getElementById("copy-translation");
 const unsupportedBanner = document.getElementById("unsupported-banner");
-const shortcutHint = document.getElementById("shortcut-hint");
+const autoCopyToggle = document.getElementById("auto-copy-toggle");
+const historyList = document.getElementById("history-list");
+const clearHistoryBtn = document.getElementById("clear-history");
+const toast = document.getElementById("toast");
 
 // ========== State ==========
 let isRecording = false;
 let recognition = null;
 let finalTranscript = "";
-let accumulatedTranscript = ""; // persists across auto-restarts
+let accumulatedTranscript = "";
 let translateTimer = null;
 let micPermissionGranted = false;
+
+// ========== Constants ==========
+const HISTORY_KEY = "voiceInputHistory";
+const HISTORY_TTL = 60 * 60 * 1000; // 1 hour in ms
+const MIC_PERM_KEY = "voiceInputMicGranted";
+const AUTO_COPY_KEY = "voiceInputAutoCopy";
 
 // ========== Browser Support Check ==========
 const SpeechRecognition =
@@ -31,14 +40,38 @@ if (!SpeechRecognition) {
   micBtn.style.cursor = "not-allowed";
 }
 
+// ========== Restore Settings ==========
+// Auto-copy toggle
+if (localStorage.getItem(AUTO_COPY_KEY) === "true") {
+  autoCopyToggle.checked = true;
+}
+autoCopyToggle.addEventListener("change", () => {
+  localStorage.setItem(AUTO_COPY_KEY, autoCopyToggle.checked);
+});
+
 // ========== Microphone Permission ==========
+// Check if previously granted and auto-request
+(async function initMicPermission() {
+  if (localStorage.getItem(MIC_PERM_KEY) === "true") {
+    // Previously granted — try to silently confirm
+    try {
+      const result = await navigator.permissions.query({ name: "microphone" });
+      if (result.state === "granted") {
+        micPermissionGranted = true;
+      }
+    } catch (e) {
+      // permissions.query not supported — will ask on first use
+    }
+  }
+})();
+
 async function ensureMicPermission() {
   if (micPermissionGranted) return true;
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // Stop the stream immediately — we just needed the permission
     stream.getTracks().forEach((track) => track.stop());
     micPermissionGranted = true;
+    localStorage.setItem(MIC_PERM_KEY, "true");
     return true;
   } catch (err) {
     console.error("Microphone permission denied:", err);
@@ -73,7 +106,6 @@ function createRecognition() {
       }
     }
 
-    // Combine accumulated (from previous auto-restart sessions) + current session
     finalTranscript = accumulatedTranscript + sessionFinal;
 
     // Update UI
@@ -104,7 +136,6 @@ function createRecognition() {
       micLabel.classList.add("error");
       stopRecording();
     } else if (event.error === "no-speech") {
-      // No speech detected — this is not fatal, just continue
       console.log("No speech detected, continuing...");
     } else if (event.error !== "aborted") {
       stopRecording();
@@ -112,10 +143,7 @@ function createRecognition() {
   };
 
   rec.onend = () => {
-    console.log("Speech recognition ended, isRecording:", isRecording);
-    // Auto-restart if still in recording mode (handles Chrome's ~60s cutoff)
     if (isRecording) {
-      // Save final transcript from this session before restart
       accumulatedTranscript = finalTranscript;
       try {
         recognition = createRecognition();
@@ -141,7 +169,6 @@ async function toggleRecording() {
 }
 
 async function startRecording() {
-  // Request mic permission first
   const hasPermission = await ensureMicPermission();
   if (!hasPermission) return;
 
@@ -156,7 +183,7 @@ async function startRecording() {
     micBtn.classList.add("recording");
     micIcon.classList.add("hidden");
     stopIcon.classList.remove("hidden");
-    micLabel.textContent = "録音中... タップ or Ctrl+Shift+S で停止";
+    micLabel.textContent = "録音中... タップ or Alt+R で停止";
     micLabel.classList.add("recording");
     micLabel.classList.remove("error");
     recognitionOutput.innerHTML =
@@ -183,13 +210,16 @@ function stopRecording() {
   micBtn.classList.remove("recording");
   micIcon.classList.remove("hidden");
   stopIcon.classList.add("hidden");
-  micLabel.textContent = "タップ or Ctrl+Shift+S で録音開始";
+  micLabel.textContent = "タップ or Alt+R で録音開始";
   micLabel.classList.remove("recording");
   micLabel.classList.remove("error");
 
-  // Final translation with confirmed text
+  // Final translation & auto-copy
   if (finalTranscript.trim()) {
-    translateText(finalTranscript);
+    translateText(finalTranscript, true); // true = save to history
+    if (autoCopyToggle.checked) {
+      autoCopyToClipboard(finalTranscript);
+    }
   }
 }
 
@@ -199,23 +229,39 @@ micBtn.addEventListener("click", (e) => {
   toggleRecording();
 });
 
-// Prevent double-fire on touch devices
 micBtn.addEventListener("touchend", (e) => {
   e.preventDefault();
   toggleRecording();
 });
 
-// ========== Global Keyboard Shortcut ==========
-// Ctrl+Shift+S — works regardless of focus, even in select/input
+// ========== Global Keyboard Shortcuts ==========
+// Alt+R — toggle recording (no conflict with browser shortcuts)
+// Alt+C — copy latest translation/recognition to clipboard
+// Space  — toggle recording (when not in form control)
 document.addEventListener("keydown", (event) => {
-  if (event.ctrlKey && event.shiftKey && event.code === "KeyS") {
+  // Alt+R: toggle recording
+  if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyR") {
     event.preventDefault();
     event.stopPropagation();
     toggleRecording();
     return;
   }
 
-  // Space bar fallback (only when not focused on form controls)
+  // Alt+C: copy latest result to clipboard
+  if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyC") {
+    event.preventDefault();
+    event.stopPropagation();
+    // Prefer translation, fallback to recognition
+    const transText = getTextContent(translationOutput);
+    const recogText = getTextContent(recognitionOutput);
+    const textToCopy = transText || recogText;
+    if (textToCopy) {
+      autoCopyToClipboard(textToCopy);
+    }
+    return;
+  }
+
+  // Space bar (when not in form controls)
   if (
     event.code === "Space" &&
     !["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(event.target.tagName)
@@ -229,21 +275,23 @@ document.addEventListener("keydown", (event) => {
 function scheduleTranslation(text) {
   clearTimeout(translateTimer);
   if (!text.trim()) return;
-  translateTimer = setTimeout(() => translateText(text), 500);
+  translateTimer = setTimeout(() => translateText(text, false), 500);
 }
 
-async function translateText(text) {
+async function translateText(text, saveToHistory) {
   if (!text.trim()) return;
 
-  const sourceLang = inputLangSelect.value.split("-")[0]; // "ja-JP" -> "ja"
+  const sourceLang = inputLangSelect.value.split("-")[0];
   const targetLang = outputLangSelect.value;
 
-  // Skip if source and target are the same
   if (sourceLang === targetLang) {
     translationOutput.innerHTML = "";
     const span = document.createElement("span");
     span.textContent = text;
     translationOutput.appendChild(span);
+    if (saveToHistory) {
+      addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
+    }
     return;
   }
 
@@ -258,10 +306,20 @@ async function translateText(text) {
     const data = await response.json();
 
     if (data.responseStatus === 200 && data.responseData) {
+      const translated = data.responseData.translatedText;
       translationOutput.innerHTML = "";
       const span = document.createElement("span");
-      span.textContent = data.responseData.translatedText;
+      span.textContent = translated;
       translationOutput.appendChild(span);
+
+      if (saveToHistory) {
+        addHistory(text, translated, inputLangSelect.value, outputLangSelect.value);
+      }
+
+      // Auto-copy translation if enabled
+      if (saveToHistory && autoCopyToggle.checked) {
+        autoCopyToClipboard(translated);
+      }
     } else {
       translationOutput.innerHTML =
         '<span class="placeholder">翻訳に失敗しました。もう一度お試しください。</span>';
@@ -288,6 +346,18 @@ function copyToClipboard(element, btn) {
   });
 }
 
+function autoCopyToClipboard(text) {
+  if (!text.trim()) return;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("クリップボードにコピーしました");
+  });
+}
+
+function getTextContent(element) {
+  if (element.querySelector(".placeholder")) return "";
+  return element.textContent.trim();
+}
+
 copyRecognitionBtn.addEventListener("click", () => {
   copyToClipboard(recognitionOutput, copyRecognitionBtn);
 });
@@ -295,6 +365,119 @@ copyRecognitionBtn.addEventListener("click", () => {
 copyTranslationBtn.addEventListener("click", () => {
   copyToClipboard(translationOutput, copyTranslationBtn);
 });
+
+// ========== Toast Notification ==========
+let toastTimer = null;
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.classList.add("hidden"), 300);
+  }, 1500);
+}
+
+// ========== History (localStorage, 1-hour TTL) ==========
+function getHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const items = JSON.parse(raw);
+    const now = Date.now();
+    // Filter out expired entries
+    return items.filter((item) => now - item.timestamp < HISTORY_TTL);
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(items) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+}
+
+function addHistory(original, translated, inputLang, outputLang) {
+  const items = getHistory();
+  items.unshift({
+    original,
+    translated,
+    inputLang,
+    outputLang,
+    timestamp: Date.now(),
+  });
+  // Keep max 50 items
+  if (items.length > 50) items.length = 50;
+  saveHistory(items);
+  renderHistory();
+}
+
+function renderHistory() {
+  const items = getHistory();
+  historyList.innerHTML = "";
+
+  if (items.length === 0) {
+    const span = document.createElement("span");
+    span.className = "placeholder";
+    span.textContent = "まだ履歴がありません";
+    historyList.appendChild(span);
+    return;
+  }
+
+  items.forEach((item) => {
+    const div = document.createElement("div");
+    div.className = "history-item";
+
+    const time = new Date(item.timestamp);
+    const timeStr = time.toLocaleTimeString("ja-JP", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    div.innerHTML = "";
+    const timeEl = document.createElement("div");
+    timeEl.className = "history-item-time";
+    timeEl.textContent = timeStr;
+    div.appendChild(timeEl);
+
+    const origEl = document.createElement("div");
+    origEl.className = "history-item-original";
+    origEl.textContent = item.original;
+    div.appendChild(origEl);
+
+    const transEl = document.createElement("div");
+    transEl.className = "history-item-translated";
+    transEl.textContent = item.translated;
+    div.appendChild(transEl);
+
+    const langsEl = document.createElement("div");
+    langsEl.className = "history-item-langs";
+    langsEl.textContent = `${item.inputLang} → ${item.outputLang}`;
+    div.appendChild(langsEl);
+
+    // Click to copy translation
+    div.addEventListener("click", () => {
+      autoCopyToClipboard(item.translated);
+    });
+
+    historyList.appendChild(div);
+  });
+}
+
+clearHistoryBtn.addEventListener("click", () => {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+});
+
+// Render on load
+renderHistory();
+
+// Periodic cleanup (every 5 min, remove expired)
+setInterval(() => {
+  const items = getHistory(); // getHistory already filters expired
+  saveHistory(items);
+  renderHistory();
+}, 5 * 60 * 1000);
 
 // ========== Language Change Handlers ==========
 inputLangSelect.addEventListener("change", () => {
@@ -305,9 +488,9 @@ inputLangSelect.addEventListener("change", () => {
 });
 
 outputLangSelect.addEventListener("change", () => {
-  const currentText = recognitionOutput.textContent.trim();
-  if (currentText && !recognitionOutput.querySelector(".placeholder")) {
-    translateText(currentText);
+  const currentText = getTextContent(recognitionOutput);
+  if (currentText) {
+    translateText(currentText, false);
   }
 });
 
