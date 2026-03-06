@@ -81,9 +81,9 @@ micLabel.textContent = labels.tapStart;
 if (shortcutHint) {
   if (labels.shortcutHTML) {
     shortcutHint.innerHTML = labels.shortcutHTML;
-  } else {
-    shortcutHint.style.display = "none";
+    shortcutHint.style.display = "";  // show (was hidden by default in HTML)
   }
+  // Otherwise stays display:none (default in HTML) — no shortcuts on mobile
 }
 
 document.body.classList.add("platform-" + platform);
@@ -283,6 +283,20 @@ async function startRecording() {
   const hasPermission = await ensureMicPermission();
   if (!hasPermission) return;
 
+  // iOS: forcefully re-acquire mic stream before each session.
+  // Without this, 2nd+ recordings silently fail because iOS WebKit
+  // releases the audio session after the previous recognition ends.
+  if (isIOS) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+    } catch (e) {
+      console.warn("[iOS] mic re-acquire failed:", e);
+    }
+    // Small delay to let iOS release/re-init audio session
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
   finalTranscript = "";
   accumulatedTranscript = "";
   restartAttempts = 0;
@@ -323,10 +337,9 @@ function stopRecording() {
   micLabel.classList.remove("error");
 
   if (finalTranscript.trim()) {
+    // Always translate first; auto-copy happens AFTER translation completes
+    // (inside translateText when saveToHistory=true and autoCopyToggle is on)
     translateText(finalTranscript, true);
-    if (autoCopyToggle.checked) {
-      writeToClipboard(finalTranscript);
-    }
   }
 }
 
@@ -393,6 +406,9 @@ async function translateText(text, saveToHistory) {
     translationOutput.appendChild(span);
     if (saveToHistory) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
+      if (autoCopyToggle.checked) {
+        writeToClipboard(text);
+      }
     }
     return;
   }
