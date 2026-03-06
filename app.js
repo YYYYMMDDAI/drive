@@ -341,22 +341,65 @@ function stopRecording() {
   micLabel.classList.remove("error");
 
   if (finalTranscript.trim()) {
-    // iOS: copy the CURRENTLY DISPLAYED translation synchronously, within
-    // the user's tap gesture context. This is the only reliable way to
-    // auto-copy on iOS — clipboard APIs fail after any async operation.
-    // The real-time translation (from scheduleTranslation during recording)
-    // is already showing the translated text.
-    let copiedInGesture = false;
+    // iOS: initiate clipboard write NOW (in gesture context) using
+    // ClipboardItem with Promise<Blob>. The clipboard slot is reserved
+    // immediately, and the content is filled when translation completes.
+    // This works reliably on every attempt because the clipboard.write()
+    // call happens synchronously within the user's tap gesture.
+    let pendingCopy = null;
     if (isIOS && autoCopyToggle.checked) {
-      const displayedTranslation = getTextContent(translationOutput);
-      if (displayedTranslation) {
-        fallbackCopy(displayedTranslation);
-        copiedInGesture = true;
-      }
+      pendingCopy = initIOSClipboardWrite();
     }
 
-    translateText(finalTranscript, true, copiedInGesture);
+    translateText(finalTranscript, true, pendingCopy);
   }
+}
+
+/**
+ * iOS: reserve a clipboard write slot within the current user gesture context.
+ * Returns a resolver function that, when called with text, fills the clipboard.
+ * Uses ClipboardItem with Promise<Blob> (Safari 16.4+).
+ * Falls back to copying the currently displayed translation for older iOS.
+ */
+function initIOSClipboardWrite() {
+  // Safari 16.4+: ClipboardItem accepts Promise<Blob> as value
+  if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== "undefined") {
+    let resolver;
+    const contentPromise = new Promise((resolve) => {
+      resolver = resolve;
+      // Safety timeout: if translation takes >4s, use whatever is displayed
+      setTimeout(() => {
+        const displayed = getTextContent(translationOutput);
+        resolve(displayed || "");
+      }, 4000);
+    });
+
+    try {
+      const blobPromise = contentPromise.then(
+        (text) => new Blob([text || " "], { type: "text/plain" })
+      );
+      const item = new ClipboardItem({ "text/plain": blobPromise });
+      navigator.clipboard.write([item])
+        .then(() => showToast("クリップボードにコピーしました"))
+        .catch((err) => {
+          console.warn("[iOS] clipboard.write failed:", err);
+          // Last resort: try fallbackCopy with whatever is currently displayed
+          const displayed = getTextContent(translationOutput);
+          if (displayed) fallbackCopy(displayed);
+        });
+      return resolver;
+    } catch (e) {
+      console.warn("[iOS] ClipboardItem creation failed:", e);
+    }
+  }
+
+  // Fallback for older iOS without ClipboardItem Promise support:
+  // copy whatever translation is currently displayed (may be empty on 1st use)
+  const displayed = getTextContent(translationOutput);
+  if (displayed) {
+    fallbackCopy(displayed);
+  }
+  return null;
 }
 
 /** Release active mic stream tracks to free the microphone hardware */
@@ -399,7 +442,15 @@ function scheduleTranslation(text) {
   translateTimer = setTimeout(() => translateText(text, false), 500);
 }
 
-async function translateText(text, saveToHistory, alreadyCopied) {
+/**
+ * Translate text and optionally save to history / auto-copy.
+ * @param {string} text - Text to translate
+ * @param {boolean} saveToHistory - Whether to save the result to history
+ * @param {Function|null} pendingIOSCopy - Resolver from initIOSClipboardWrite().
+ *   If provided, call it with the translated text to fulfill the pending clipboard write.
+ *   If null, use writeToClipboard() directly (works on desktop, fails on iOS after async).
+ */
+async function translateText(text, saveToHistory, pendingIOSCopy) {
   if (!text.trim()) return;
 
   const sourceLang = inputLangSelect.value.split("-")[0];
@@ -412,8 +463,12 @@ async function translateText(text, saveToHistory, alreadyCopied) {
     translationOutput.appendChild(span);
     if (saveToHistory) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
-      if (autoCopyToggle.checked && !alreadyCopied) {
-        writeToClipboard(text);
+      if (autoCopyToggle.checked) {
+        if (pendingIOSCopy) {
+          pendingIOSCopy(text);
+        } else {
+          writeToClipboard(text);
+        }
       }
     }
     return;
@@ -440,19 +495,26 @@ async function translateText(text, saveToHistory, alreadyCopied) {
         addHistory(text, translated, inputLangSelect.value, outputLangSelect.value);
       }
 
-      if (saveToHistory && autoCopyToggle.checked && !alreadyCopied) {
-        // Desktop: clipboard works fine after async
-        // iOS: already copied in stopRecording gesture context
-        writeToClipboard(translated);
+      if (saveToHistory && autoCopyToggle.checked) {
+        if (pendingIOSCopy) {
+          // Resolve the pending ClipboardItem promise with translated text
+          pendingIOSCopy(translated);
+        } else {
+          // Desktop: clipboard works fine after async
+          writeToClipboard(translated);
+        }
       }
     } else {
       translationOutput.innerHTML =
         '<span class="placeholder">翻訳に失敗しました。もう一度お試しください。</span>';
+      // Resolve pending promise to prevent hang (empty string = no-op)
+      if (pendingIOSCopy) pendingIOSCopy("");
     }
   } catch (error) {
     console.error("Translation error:", error);
     translationOutput.innerHTML =
       '<span class="placeholder">翻訳エラー: ネットワークを確認してください。</span>';
+    if (pendingIOSCopy) pendingIOSCopy("");
   }
 }
 
