@@ -1,4 +1,4 @@
-const CACHE_NAME = "voice-input-v4";
+const CACHE_NAME = "voice-input-v5";
 const ASSETS = [
   "./index.html",
   "./style.css",
