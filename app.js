@@ -27,6 +27,7 @@ let isRecording = false;
 let recognition = null;
 let finalTranscript = "";
 let accumulatedTranscript = "";
+let lastInterimText = ""; // Track interim text as fallback for mobile
 let translateTimer = null;
 let micPermissionGranted = false;
 let activeMicStream = null; // Track active mic stream for clean release
@@ -440,6 +441,9 @@ function createRecognition() {
 
     finalTranscript = accumulatedTranscript + sessionFinal;
 
+    // Track interim text so we can use it as fallback when stopping
+    if (interim) lastInterimText = interim;
+
     recognitionOutput.innerHTML = "";
     if (finalTranscript) {
       const finalSpan = document.createElement("span");
@@ -559,6 +563,7 @@ async function startWebSpeechRecording() {
 
   finalTranscript = "";
   accumulatedTranscript = "";
+  lastInterimText = "";
   restartAttempts = 0;
 
   try {
@@ -668,8 +673,24 @@ function stopRecording() {
 }
 
 function stopWebSpeechRecording() {
+  // Collect the best available text BEFORE stopping recognition.
+  // On mobile (non-continuous mode), interim results may not have been
+  // finalized yet. We capture the displayed text as a robust fallback.
+  let bestText = finalTranscript.trim();
+  if (!bestText && lastInterimText) {
+    bestText = lastInterimText.trim();
+  }
+  if (!bestText) {
+    // Last resort: grab whatever text is currently shown in the output
+    bestText = getTextContent(recognitionOutput);
+  }
+
   if (recognition) {
-    try { recognition.abort(); } catch (e) { /* ignore */ }
+    try {
+      // Use stop() instead of abort() to give the recognizer a chance
+      // to produce a final result. abort() discards pending results.
+      recognition.stop();
+    } catch (e) { /* ignore */ }
     recognition = null;
   }
   // Explicitly release mic stream so iOS stops showing the mic indicator
@@ -677,16 +698,25 @@ function stopWebSpeechRecording() {
 
   resetMicUI();
 
-  if (finalTranscript.trim()) {
-    // iOS: initiate clipboard write NOW (in gesture context) using
-    // ClipboardItem with Promise<Blob>. The clipboard slot is reserved
-    // immediately, and the content is filled when translation completes.
+  if (bestText) {
+    // Ensure the recognized text is displayed in the output area
+    finalTranscript = bestText;
+    recognitionOutput.innerHTML = "";
+    const span = document.createElement("span");
+    span.textContent = sanitizeText(bestText);
+    recognitionOutput.appendChild(span);
+
+    // Mobile (all platforms): reserve clipboard slot NOW in gesture context.
+    // On iOS, clipboard.write() must be called synchronously in gesture.
+    // On Android, clipboard.writeText() may also expire after async delay.
     let pendingCopy = null;
-    if (isIOS && autoCopyToggle.checked) {
-      pendingCopy = initIOSClipboardWrite();
+    if (isMobile && autoCopyToggle.checked) {
+      pendingCopy = initMobileClipboardWrite();
     }
 
-    translateText(finalTranscript, true, pendingCopy);
+    translateText(bestText, true, pendingCopy);
+  } else {
+    showPlaceholder(recognitionOutput, "音声を認識できませんでした。もう一度お試しください。");
   }
 }
 
@@ -701,10 +731,10 @@ function stopWhisperRecording() {
   }
   hideVADIndicator();
 
-  // iOS: reserve clipboard slot in gesture context before async processing
+  // Mobile: reserve clipboard slot in gesture context before async processing
   let pendingCopy = null;
-  if (isIOS && autoCopyToggle.checked) {
-    pendingCopy = initIOSClipboardWrite();
+  if (isMobile && autoCopyToggle.checked) {
+    pendingCopy = initMobileClipboardWrite();
   }
 
   resetMicUI();
@@ -764,22 +794,26 @@ function resetMicUI() {
 }
 
 /**
- * iOS: reserve a clipboard write slot within the current user gesture context.
+ * Mobile: reserve a clipboard write slot within the current user gesture context.
+ * On mobile browsers, clipboard access requires a recent user gesture.
+ * After an async operation (translation API), the gesture context expires.
+ *
  * Returns a resolver function that, when called with text, fills the clipboard.
- * Uses ClipboardItem with Promise<Blob> (Safari 16.4+).
- * Falls back to copying the currently displayed translation for older iOS.
+ * Uses ClipboardItem with Promise<Blob> (Safari 16.4+ / Chrome 76+).
+ * Falls back to a deferred copy approach for older browsers.
  */
-function initIOSClipboardWrite() {
-  // Safari 16.4+: ClipboardItem accepts Promise<Blob> as value
+function initMobileClipboardWrite() {
+  // ClipboardItem with Promise<Blob>: reserve the slot synchronously,
+  // fill the content asynchronously when translation completes.
   if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== "undefined") {
     let resolver;
     const contentPromise = new Promise((resolve) => {
       resolver = resolve;
-      // Safety timeout: if translation takes >4s, use whatever is displayed
+      // Safety timeout: if translation takes >6s, use whatever is displayed
       setTimeout(() => {
         const displayed = getTextContent(translationOutput);
         resolve(displayed || "");
-      }, 4000);
+      }, 6000);
     });
 
     try {
@@ -788,27 +822,35 @@ function initIOSClipboardWrite() {
       );
       const item = new ClipboardItem({ "text/plain": blobPromise });
       navigator.clipboard.write([item])
-        .then(() => showToast("クリップボードにコピーしました"))
+        .then(() => showToast("翻訳結果をコピーしました"))
         .catch((err) => {
-          console.warn("[iOS] clipboard.write failed:", err);
+          console.warn("[clipboard] write failed:", err);
           // Last resort: try fallbackCopy with whatever is currently displayed
           const displayed = getTextContent(translationOutput);
-          if (displayed) fallbackCopy(displayed);
+          if (displayed) {
+            fallbackCopy(displayed);
+          } else {
+            showToast("コピーに失敗しました");
+          }
         });
       return resolver;
     } catch (e) {
-      console.warn("[iOS] ClipboardItem creation failed:", e);
+      console.warn("[clipboard] ClipboardItem creation failed:", e);
     }
   }
 
-  // Fallback for older iOS without ClipboardItem Promise support:
-  // copy whatever translation is currently displayed (may be empty on 1st use)
-  const displayed = getTextContent(translationOutput);
-  if (displayed) {
-    fallbackCopy(displayed);
-  }
-  return null;
+  // Fallback for browsers without ClipboardItem Promise support:
+  // Return a deferred copy function that will be called after translation.
+  // This may fail on iOS (gesture expired) but works on some Android browsers.
+  return function deferredCopy(text) {
+    if (text && text.trim()) {
+      writeToClipboard(text);
+    }
+  };
 }
+
+// Keep backward compatibility alias
+const initIOSClipboardWrite = initMobileClipboardWrite;
 
 /** Release active mic stream tracks to free the microphone hardware */
 function releaseMicStream() {
@@ -854,11 +896,11 @@ function scheduleTranslation(text) {
  * Translate text and optionally save to history / auto-copy.
  * @param {string} text - Text to translate
  * @param {boolean} saveToHistory - Whether to save the result to history
- * @param {Function|null} pendingIOSCopy - Resolver from initIOSClipboardWrite().
+ * @param {Function|null} pendingCopy - Resolver from initMobileClipboardWrite().
  *   If provided, call it with the translated text to fulfill the pending clipboard write.
- *   If null, use writeToClipboard() directly (works on desktop, fails on iOS after async).
+ *   If null, use writeToClipboard() directly (works on desktop after async).
  */
-async function translateText(text, saveToHistory, pendingIOSCopy) {
+async function translateText(text, saveToHistory, pendingCopy) {
   if (!text.trim()) return;
 
   const sourceLang = inputLangSelect.value.split("-")[0];
@@ -872,11 +914,7 @@ async function translateText(text, saveToHistory, pendingIOSCopy) {
     if (saveToHistory) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
       if (autoCopyToggle.checked) {
-        if (pendingIOSCopy) {
-          pendingIOSCopy(text);
-        } else {
-          writeToClipboard(text);
-        }
+        performAutoCopy(text, pendingCopy);
       }
     }
     return;
@@ -904,25 +942,40 @@ async function translateText(text, saveToHistory, pendingIOSCopy) {
       }
 
       if (saveToHistory && autoCopyToggle.checked) {
-        if (pendingIOSCopy) {
-          // Resolve the pending ClipboardItem promise with translated text
-          pendingIOSCopy(translated);
-        } else {
-          // Desktop: clipboard works fine after async
-          writeToClipboard(translated);
-        }
+        performAutoCopy(translated, pendingCopy);
       }
     } else {
       translationOutput.innerHTML =
         '<span class="placeholder">翻訳に失敗しました。もう一度お試しください。</span>';
-      // Resolve pending promise to prevent hang (empty string = no-op)
-      if (pendingIOSCopy) pendingIOSCopy("");
+      // Resolve pending clipboard promise to prevent hang
+      if (pendingCopy) pendingCopy("");
     }
   } catch (error) {
     console.error("Translation error:", error);
     translationOutput.innerHTML =
       '<span class="placeholder">翻訳エラー: ネットワークを確認してください。</span>';
-    if (pendingIOSCopy) pendingIOSCopy("");
+    if (pendingCopy) pendingCopy("");
+  }
+}
+
+/**
+ * Perform auto-copy of translated text.
+ * Uses the pre-reserved clipboard slot (mobile) or direct write (desktop).
+ * @param {string} text - Text to copy
+ * @param {Function|null} pendingCopy - Resolver from initMobileClipboardWrite()
+ */
+function performAutoCopy(text, pendingCopy) {
+  if (!text || !text.trim()) {
+    if (pendingCopy) pendingCopy("");
+    return;
+  }
+
+  if (pendingCopy) {
+    // Mobile: resolve the pre-reserved clipboard slot with translated text
+    pendingCopy(text);
+  } else {
+    // Desktop: clipboard.writeText works fine outside gesture context
+    writeToClipboard(text);
   }
 }
 
@@ -939,7 +992,7 @@ function writeToClipboard(text) {
   // Try modern Clipboard API first
   if (navigator.clipboard && navigator.clipboard.writeText) {
     return navigator.clipboard.writeText(text).then(() => {
-      showToast("クリップボードにコピーしました");
+      showToast("翻訳結果をコピーしました");
       return true;
     }).catch(() => {
       // Clipboard API failed (iOS standalone, non-gesture context, etc.)
@@ -979,7 +1032,7 @@ function fallbackCopy(text) {
     document.body.removeChild(textarea);
 
     if (success) {
-      showToast("クリップボードにコピーしました");
+      showToast("翻訳結果をコピーしました");
     } else {
       showToast("コピーに失敗しました");
     }
