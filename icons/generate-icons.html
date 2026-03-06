@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Voice Input - Icon Generator</title>
+  <style>
+    body { font-family: sans-serif; background: #0f0f14; color: #e8e8ef; padding: 40px; text-align: center; }
+    #status { font-size: 1.2rem; margin: 20px 0; }
+    .done { color: #2ed573; }
+    canvas { border: 1px solid #333; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Icon Generator</h1>
+  <p id="status">Generating PNG icons...</p>
+  <div id="previews"></div>
+  <script>
+    const img = new Image();
+    img.onload = () => {
+      const sizes = [
+        [192, 'icon-192.png'],
+        [512, 'icon-512.png'],
+        [256, 'icon.png']
+      ];
+      let done = 0;
+      sizes.forEach(([size, name], i) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        document.getElementById('previews').appendChild(canvas);
+
+        setTimeout(() => {
+          canvas.toBlob((blob) => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            a.click();
+            done++;
+            if (done === sizes.length) {
+              document.getElementById('status').textContent =
+                'Done! Move icon-192.png, icon-512.png, icon.png into the icons/ folder.';
+              document.getElementById('status').className = 'done';
+            }
+          }, 'image/png');
+        }, i * 600);
+      });
+    };
+    img.onerror = () => {
+      document.getElementById('status').textContent = 'Error: icon.svg not found. Make sure this file is in the icons/ folder.';
+    };
+    img.src = 'icon.svg';
+  </script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Input — 音声入力 & 翻訳</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6c5ce7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Voice Input</h1>
+      <p class="subtitle">音声入力 & 多言語翻訳</p>
+    </header>
+
+    <main>
+      <!-- 設定バー -->
+      <div class="settings-bar">
+        <div class="control-row">
+          <label for="input-lang">入力言語</label>
+          <select id="input-lang">
+            <option value="ja-JP" selected>日本語</option>
+            <option value="en-US">English</option>
+            <option value="zh-CN">中文（普通话）</option>
+            <option value="ko-KR">한국어</option>
+            <option value="es-ES">Español</option>
+            <option value="fr-FR">Français</option>
+          </select>
+        </div>
+        <label class="toggle-label">
+          <input type="checkbox" id="auto-copy-toggle">
+          <span class="toggle-switch"></span>
+          <span>自動コピー</span>
+        </label>
+      </div>
+
+      <!-- 認識結果エリア -->
+      <section class="result-section">
+        <div class="section-header">
+          <h2>認識結果</h2>
+          <button class="copy-btn" id="copy-recognition" title="コピー">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>コピー</span>
+          </button>
+        </div>
+        <div class="text-area" id="recognition-output">
+          <span class="placeholder">ここに認識結果が表示されます...</span>
+        </div>
+      </section>
+
+      <!-- 録音ボタン -->
+      <div class="mic-container">
+        <button class="mic-btn" id="mic-btn" aria-label="録音開始">
+          <svg class="mic-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          <svg class="stop-icon hidden" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+        <span class="mic-label" id="mic-label">タップして録音開始</span>
+      </div>
+
+      <!-- ショートカットキー表示（JSがプラットフォーム別に内容を設定。モバイルでは非表示） -->
+      <div class="shortcut-hint" id="shortcut-hint" style="display:none;"></div>
+
+      <!-- 翻訳セクション -->
+      <section class="result-section translation-section">
+        <div class="section-header">
+          <h2>翻訳</h2>
+          <button class="copy-btn" id="copy-translation" title="コピー">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>コピー</span>
+          </button>
+        </div>
+        <div class="control-row">
+          <label for="output-lang">翻訳先</label>
+          <select id="output-lang">
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+            <option value="ko">한국어</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="pt">Português</option>
+            <option value="it">Italiano</option>
+            <option value="ru">Русский</option>
+          </select>
+        </div>
+        <div class="text-area" id="translation-output">
+          <span class="placeholder">翻訳結果がここに表示されます...</span>
+        </div>
+      </section>
+
+      <!-- 履歴セクション -->
+      <section class="result-section history-section">
+        <div class="section-header">
+          <h2>履歴（1時間保持）</h2>
+          <button class="copy-btn" id="clear-history" title="クリア">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            <span>クリア</span>
+          </button>
+        </div>
+        <div class="history-list" id="history-list">
+          <span class="placeholder">まだ履歴がありません</span>
+        </div>
+      </section>
+    </main>
+
+    <!-- 自動コピー通知 -->
+    <div class="toast hidden" id="toast">コピーしました</div>
+
+    <!-- ブラウザ非対応通知 -->
+    <div class="unsupported-banner hidden" id="unsupported-banner">
+      このブラウザはWeb Speech APIに対応していません。Chrome または Edge をお使いください。
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Register Service Worker for PWA (only in browser, not Electron)
+    if ("serviceWorker" in navigator && !navigator.userAgent.includes("Electron")) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{
+  "name": "voice-input",
+  "version": "1.0.0",
+  "description": "音声入力 & 多言語翻訳 デスクトップアプリ",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.voiceinput.app",
+    "productName": "Voice Input",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron-main.js",
+      "index.html",
+      "style.css",
+      "app.js",
+      "manifest.json",
+      "sw.js",
+      "icons/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "icons/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": "icons/icon.png",
+      "uninstallerIcon": "icons/icon.png",
+      "shortcutName": "Voice Input"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icons/icon.png",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "icons/icon.png",
+      "category": "Utility"
+    }
+  }
+}
