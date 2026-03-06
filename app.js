@@ -54,24 +54,23 @@ const labels = (() => {
       };
     case "mac":
       return {
-        tapStart: "クリック or ⌥R で録音開始",
-        tapStop: "録音中... クリック or ⌥R で停止",
+        tapStart: "クリックで録音開始",
+        tapStop: "録音中... クリックで停止",
         shortcutHTML:
-          '<kbd>⌥</kbd><kbd>R</kbd> 録音 &nbsp;|&nbsp; <kbd>⌥</kbd><kbd>C</kbd> コピー &nbsp;|&nbsp; <kbd>Space</kbd> でも操作可',
+          '<kbd>Space</kbd> でも録音の開始 / 停止が可能',
       };
     case "electron":
       return {
-        tapStart: "クリック or Alt+R で録音開始",
-        tapStop: "録音中... クリック or Alt+R で停止",
-        shortcutHTML:
-          '<kbd>Alt</kbd>+<kbd>R</kbd> 録音（グローバル） &nbsp;|&nbsp; <kbd>Alt</kbd>+<kbd>C</kbd> コピー',
+        tapStart: "クリックで録音開始",
+        tapStop: "録音中... クリックで停止",
+        shortcutHTML: "",
       };
     default:
       return {
-        tapStart: "クリック or Alt+R で録音開始",
-        tapStop: "録音中... クリック or Alt+R で停止",
+        tapStart: "クリックで録音開始",
+        tapStop: "録音中... クリックで停止",
         shortcutHTML:
-          '<kbd>Alt</kbd>+<kbd>R</kbd> 録音 &nbsp;|&nbsp; <kbd>Alt</kbd>+<kbd>C</kbd> コピー &nbsp;|&nbsp; <kbd>Space</kbd> でも操作可',
+          '<kbd>Space</kbd> でも録音の開始 / 停止が可能',
       };
   }
 })();
@@ -337,18 +336,7 @@ function stopRecording() {
   micLabel.classList.remove("error");
 
   if (finalTranscript.trim()) {
-    // On iOS, clipboard access must be reserved during the user gesture.
-    // We create a deferred promise that resolves with the translated text,
-    // and pass it to writeToClipboardDeferred NOW (in gesture context).
-    if (isIOS && autoCopyToggle.checked) {
-      let resolveCopy;
-      const copyPromise = new Promise((resolve) => { resolveCopy = resolve; });
-      writeToClipboardDeferred(copyPromise);
-      // translateText will call resolveCopy with the translated text
-      translateText(finalTranscript, true, resolveCopy);
-    } else {
-      translateText(finalTranscript, true);
-    }
+    translateText(finalTranscript, true);
   }
 }
 
@@ -366,27 +354,9 @@ micBtn.addEventListener("touchend", (e) => {
 // ========== Global Keyboard Shortcuts ==========
 if (!isMobile) {
   document.addEventListener("keydown", (event) => {
-    if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyR") {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleRecording();
-      return;
-    }
-
-    if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyC") {
-      event.preventDefault();
-      event.stopPropagation();
-      const transText = getTextContent(translationOutput);
-      const recogText = getTextContent(recognitionOutput);
-      const textToCopy = transText || recogText;
-      if (textToCopy) {
-        writeToClipboard(textToCopy);
-      }
-      return;
-    }
-
     if (
       event.code === "Space" &&
+      !event.altKey && !event.ctrlKey && !event.shiftKey &&
       !["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(event.target.tagName)
     ) {
       event.preventDefault();
@@ -402,11 +372,8 @@ function scheduleTranslation(text) {
   translateTimer = setTimeout(() => translateText(text, false), 500);
 }
 
-async function translateText(text, saveToHistory, deferredCopyResolve) {
-  if (!text.trim()) {
-    if (deferredCopyResolve) deferredCopyResolve(text);
-    return;
-  }
+async function translateText(text, saveToHistory) {
+  if (!text.trim()) return;
 
   const sourceLang = inputLangSelect.value.split("-")[0];
   const targetLang = outputLangSelect.value;
@@ -418,10 +385,8 @@ async function translateText(text, saveToHistory, deferredCopyResolve) {
     translationOutput.appendChild(span);
     if (saveToHistory) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
-      if (deferredCopyResolve) {
-        deferredCopyResolve(text);
-      } else if (autoCopyToggle.checked) {
-        writeToClipboard(text);
+      if (autoCopyToggle.checked) {
+        autoCopyResult(text);
       }
     }
     return;
@@ -448,64 +413,35 @@ async function translateText(text, saveToHistory, deferredCopyResolve) {
         addHistory(text, translated, inputLangSelect.value, outputLangSelect.value);
       }
 
-      if (deferredCopyResolve) {
-        // Resolve the deferred promise — clipboard write reserved during gesture
-        deferredCopyResolve(translated);
-      } else if (saveToHistory && autoCopyToggle.checked) {
-        writeToClipboard(translated);
+      if (saveToHistory && autoCopyToggle.checked) {
+        autoCopyResult(translated);
       }
     } else {
-      if (deferredCopyResolve) deferredCopyResolve(text);
       translationOutput.innerHTML =
         '<span class="placeholder">翻訳に失敗しました。もう一度お試しください。</span>';
     }
   } catch (error) {
     console.error("Translation error:", error);
-    if (deferredCopyResolve) deferredCopyResolve(text);
     translationOutput.innerHTML =
       '<span class="placeholder">翻訳エラー: ネットワークを確認してください。</span>';
   }
 }
 
-// ========== Clipboard — cross-platform with iOS fallback ==========
-
 /**
- * Write text to clipboard using ClipboardItem with a deferred promise.
- * On iOS PWA, both navigator.clipboard.writeText and execCommand('copy')
- * fail outside the original user-gesture call stack (e.g. after await/fetch).
- * ClipboardItem accepts a Promise<Blob> — the browser reserves clipboard
- * access during the gesture and resolves the content later.
+ * Auto-copy translated text. On desktop, directly write to clipboard.
+ * On iOS/mobile, clipboard APIs fail outside user-gesture context (after async fetch),
+ * so show a tap-to-copy overlay that the user can tap once to copy reliably.
  */
-function writeToClipboardDeferred(contentPromise) {
-  if (typeof ClipboardItem !== "undefined" && navigator.clipboard && navigator.clipboard.write) {
-    try {
-      const item = new ClipboardItem({
-        "text/plain": contentPromise.then(
-          (text) => new Blob([text], { type: "text/plain" })
-        ),
-      });
-      return navigator.clipboard.write([item]).then(() => {
-        // Toast is shown after contentPromise resolves so text is ready
-        contentPromise.then(() => showToast("クリップボードにコピーしました"));
-        return true;
-      }).catch((err) => {
-        console.warn("[clipboard] deferred write failed:", err);
-        // Cannot fallback here — we're already outside the gesture
-        contentPromise.then((text) => {
-          showCopyOverlay(text);
-        });
-        return false;
-      });
-    } catch (e) {
-      console.warn("[clipboard] ClipboardItem creation failed:", e);
-    }
-  }
-  // Browser doesn't support ClipboardItem — show manual copy overlay after content resolves
-  contentPromise.then((text) => {
+function autoCopyResult(text) {
+  if (isIOS) {
+    // iOS: clipboard APIs fail after async operations — show tap-to-copy overlay
     showCopyOverlay(text);
-  });
-  return Promise.resolve(false);
+  } else {
+    writeToClipboard(text);
+  }
 }
+
+// ========== Clipboard — cross-platform with iOS fallback ==========
 
 /**
  * Write text to clipboard. Uses Clipboard API with fallback to
@@ -804,7 +740,6 @@ function showPlaceholder(element, text) {
 // ========== Expose for E2E Testing ==========
 // Only used by test.html iframe; no effect in production
 window.writeToClipboard = writeToClipboard;
-window.writeToClipboardDeferred = writeToClipboardDeferred;
 window.fallbackCopy = fallbackCopy;
 window.showToast = showToast;
 window.getHistory = getHistory;
