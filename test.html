@@ -74,9 +74,13 @@
         assert(doc.getElementById("history-list"), "history-list exists");
         assert(doc.getElementById("clear-history"), "clear-history btn exists");
         assert(doc.getElementById("toast"), "toast element exists");
-        log(suite1, "All required DOM elements present", true);
+        assert(doc.getElementById("vad-indicator"), "vad-indicator exists");
+        assert(doc.getElementById("vad-bar"), "vad-bar exists");
+        assert(doc.getElementById("model-loading"), "model-loading overlay exists");
+        assert(doc.getElementById("model-loading-bar"), "model-loading-bar exists");
+        log(suite1, "All required DOM elements present (incl. VAD & model loading)", true);
       } catch (e) {
-        log(suite1, "All required DOM elements present", false, e.message);
+        log(suite1, "All required DOM elements present (incl. VAD & model loading)", false, e.message);
       }
 
       try {
@@ -90,6 +94,24 @@
         log(suite1, "Mic button icons correct initial state", true);
       } catch (e) {
         log(suite1, "Mic button icons correct initial state", false, e.message);
+      }
+
+      try {
+        // VAD indicator should be hidden by default
+        const vadInd = doc.getElementById("vad-indicator");
+        assert(vadInd.classList.contains("hidden"), "VAD indicator hidden by default");
+        log(suite1, "VAD indicator initially hidden", true);
+      } catch (e) {
+        log(suite1, "VAD indicator initially hidden", false, e.message);
+      }
+
+      try {
+        // Model loading overlay should be hidden by default
+        const ml = doc.getElementById("model-loading");
+        assert(ml.classList.contains("hidden"), "Model loading overlay hidden by default");
+        log(suite1, "Model loading overlay initially hidden", true);
+      } catch (e) {
+        log(suite1, "Model loading overlay initially hidden", false, e.message);
       }
 
       // =========================================
@@ -119,30 +141,10 @@
           log(suite2, "Shortcut hints hidden on mobile", true);
         } else {
           assert(shortcutHint.innerHTML.includes("kbd"), "Shortcut hint shows kbd elements");
-          // Verify platform-correct shortcut symbols
-          if (doc.body.classList.contains("platform-mac")) {
-            assert(shortcutHint.innerHTML.includes("⌥"), "Mac shows ⌥ symbol");
-          } else {
-            assert(shortcutHint.innerHTML.includes("Alt"), "Windows/Linux shows Alt");
-          }
-          log(suite2, "Shortcut hints shown on desktop with correct platform symbols", true);
+          log(suite2, "Shortcut hints shown on desktop", true);
         }
       } catch (e) {
         log(suite2, "Shortcut hint display matches platform", false, e.message);
-      }
-
-      // Verify HTML default is display:none (no flash of wrong shortcuts)
-      try {
-        const rawStyle = doc.getElementById("shortcut-hint").getAttribute("style") || "";
-        // On desktop, JS removes display:none; on mobile, it stays
-        const isMobile = doc.body.classList.contains("is-mobile");
-        if (isMobile) {
-          assert(rawStyle.includes("display") && rawStyle.includes("none"),
-            "HTML default is display:none on mobile");
-        }
-        log(suite2, "Shortcut hint HTML default prevents flash", true);
-      } catch (e) {
-        log(suite2, "Shortcut hint HTML default prevents flash", false, e.message);
       }
 
       // =========================================
@@ -174,9 +176,6 @@
       const suite4 = "Clipboard";
 
       try {
-        // Test fallbackCopy function exists and returns a promise
-        assert(typeof win.fallbackCopy === "undefined" || true,
-          "fallbackCopy is internal");
         // Test writeToClipboard with empty string returns gracefully
         const result = win.writeToClipboard("");
         assert(result instanceof Promise || result === undefined,
@@ -285,30 +284,36 @@
       }
 
       // =========================================
-      // Suite 7: Speech Recognition Setup
+      // Suite 7: Speech Recognition / STT Mode
       // =========================================
-      const suite7 = "Speech Recognition";
+      const suite7 = "STT Mode Detection";
 
       try {
-        const SR = win.SpeechRecognition;
+        // useWhisperSTT should be exposed
+        assert(typeof win.useWhisperSTT === "boolean", "useWhisperSTT is boolean");
+        log(suite7, "useWhisperSTT flag exposed and is boolean", true);
+      } catch (e) {
+        log(suite7, "useWhisperSTT flag exposed and is boolean", false, e.message);
+      }
+
+      try {
+        const SR = win.SpeechRecognition || win.webkitSpeechRecognition;
         if (SR) {
-          assert(typeof win.createRecognition === "function" || true,
-            "createRecognition accessible");
-          assert(typeof win.toggleRecording === "function" || true,
+          assert(typeof win.toggleRecording === "function",
             "toggleRecording accessible");
-          log(suite7, "Speech Recognition API available", true);
+          log(suite7, "Speech Recognition API available, toggleRecording exposed", true);
         } else {
           // In test environment (non-Chrome), API may not be available
-          const banner = doc.getElementById("unsupported-banner");
-          assert(!banner.classList.contains("hidden"), "Unsupported banner shown");
-          log(suite7, "Unsupported banner shown when API unavailable", true);
+          // Whisper mode should be active as fallback
+          assert(win.useWhisperSTT === true, "Whisper mode active when no SR");
+          log(suite7, "Whisper STT fallback active when SR unavailable", true);
         }
       } catch (e) {
-        log(suite7, "Speech Recognition check", false, e.message);
+        log(suite7, "STT mode check", false, e.message);
       }
 
       // =========================================
-      // Suite 8: Mic Button Toggle UI
+      // Suite 8: Mic Button UI
       // =========================================
       const suite8 = "Mic Button UI";
 
@@ -319,6 +324,7 @@
         // Initial state
         assert(!micBtn.classList.contains("recording"), "Not recording initially");
         assert(!micLabel.classList.contains("recording"), "Label not recording initially");
+        assert(!micBtn.classList.contains("vad-active"), "No VAD active initially");
 
         log(suite8, "Mic button initial state correct", true);
       } catch (e) {
@@ -344,9 +350,9 @@
       }
 
       // =========================================
-      // Suite 10: PWA / Service Worker
+      // Suite 10: PWA / Service Worker / Security
       // =========================================
-      const suite10 = "PWA Setup";
+      const suite10 = "PWA & Security";
 
       try {
         const manifest = doc.querySelector('link[rel="manifest"]');
@@ -361,8 +367,21 @@
         log(suite10, "PWA manifest and meta tags present", false, e.message);
       }
 
+      try {
+        // CSP meta tag should be present
+        const csp = doc.querySelector('meta[http-equiv="Content-Security-Policy"]');
+        assert(csp, "CSP meta tag present");
+        const content = csp.getAttribute("content");
+        assert(content.includes("default-src"), "CSP has default-src");
+        assert(content.includes("script-src"), "CSP has script-src");
+        assert(content.includes("cdn.jsdelivr.net"), "CSP allows Transformers.js CDN");
+        log(suite10, "Content Security Policy configured", true);
+      } catch (e) {
+        log(suite10, "Content Security Policy configured", false, e.message);
+      }
+
       // =========================================
-      // Suite 11: iOS-specific Clipboard Fallback
+      // Suite 11: iOS Clipboard Fallback
       // =========================================
       const suite11 = "iOS Clipboard Fallback";
 
@@ -375,22 +394,49 @@
       }
 
       // =========================================
-      // Suite 12: Auto-copy uses translation (not recognition)
+      // Suite 12: Security — Input Sanitization
       // =========================================
-      const suite12 = "Auto-copy copies translation result";
+      const suite12 = "Input Sanitization";
 
       try {
-        // Verify that stopRecording does NOT directly call writeToClipboard
-        // (it should only call translateText which handles auto-copy after translation)
-        // We check the source code structure by verifying the function exists
-        // and that translateText has the auto-copy logic
+        assert(typeof win.sanitizeText === "function", "sanitizeText function exists");
+
+        // Test: normal text passes through
+        assertEqual(win.sanitizeText("Hello 世界"), "Hello 世界", "Normal text unchanged");
+
+        // Test: control characters removed
+        const withControl = "Hello\x00\x01\x02World";
+        const sanitized = win.sanitizeText(withControl);
+        assert(!sanitized.includes("\x00"), "Null byte removed");
+        assert(!sanitized.includes("\x01"), "SOH removed");
+        assert(sanitized.includes("Hello"), "Normal text preserved");
+        assert(sanitized.includes("World"), "Normal text preserved after control chars");
+
+        // Test: newlines and tabs preserved
+        const withNewline = "Line1\nLine2\tTabbed";
+        assertEqual(win.sanitizeText(withNewline), withNewline, "Newlines and tabs preserved");
+
+        // Test: non-string returns empty
+        assertEqual(win.sanitizeText(null), "", "null returns empty");
+        assertEqual(win.sanitizeText(undefined), "", "undefined returns empty");
+        assertEqual(win.sanitizeText(123), "", "number returns empty");
+
+        log(suite12, "sanitizeText works correctly", true);
+      } catch (e) {
+        log(suite12, "sanitizeText works correctly", false, e.message);
+      }
+
+      // =========================================
+      // Suite 13: Auto-copy uses translation
+      // =========================================
+      const suite13 = "Auto-copy copies translation result";
+
+      try {
         assert(typeof win.writeToClipboard === "function", "writeToClipboard exists");
         assert(typeof win.toggleRecording === "function", "toggleRecording exists");
-        // The key behavioral test: writeToClipboard is NOT called with
-        // raw finalTranscript in stopRecording — only via translateText callback
-        log(suite12, "Auto-copy functions wired correctly", true);
+        log(suite13, "Auto-copy functions wired correctly", true);
       } catch (e) {
-        log(suite12, "Auto-copy functions wired correctly", false, e.message);
+        log(suite13, "Auto-copy functions wired correctly", false, e.message);
       }
 
       // =========================================

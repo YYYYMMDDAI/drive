@@ -15,6 +15,12 @@ const historyList = document.getElementById("history-list");
 const clearHistoryBtn = document.getElementById("clear-history");
 const toast = document.getElementById("toast");
 const shortcutHint = document.getElementById("shortcut-hint");
+const vadIndicator = document.getElementById("vad-indicator");
+const vadBar = document.getElementById("vad-bar");
+const modelLoading = document.getElementById("model-loading");
+const modelLoadingText = document.getElementById("model-loading-text");
+const modelLoadingBar = document.getElementById("model-loading-bar");
+const modelLoadingDetail = document.getElementById("model-loading-detail");
 
 // ========== State ==========
 let isRecording = false;
@@ -94,12 +100,19 @@ const HISTORY_KEY = "voiceInputHistory";
 const HISTORY_TTL = 60 * 60 * 1000;
 const MIC_PERM_KEY = "voiceInputMicGranted";
 const AUTO_COPY_KEY = "voiceInputAutoCopy";
+const WHISPER_MODEL = "Xenova/whisper-tiny";
+const TRANSFORMERS_CDN = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1";
 
-// ========== Browser Support Check ==========
+// ========== STT Mode Detection ==========
+// Use Whisper WASM when Web Speech API is unavailable (e.g. iOS PWA standalone)
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
-if (!SpeechRecognition) {
+// iOS PWA standalone: SpeechRecognition exists but silently fails.
+// Force Whisper mode for reliable voice input.
+const useWhisperSTT = (isIOS && isPWAStandalone) || !SpeechRecognition;
+
+if (!SpeechRecognition && !useWhisperSTT) {
   unsupportedBanner.classList.remove("hidden");
   if (isIOS) {
     unsupportedBanner.textContent =
@@ -153,7 +166,242 @@ async function ensureMicPermission() {
   }
 }
 
-// ========== Speech Recognition Setup ==========
+// ========== Security: Input Sanitization ==========
+/**
+ * Sanitize text output to prevent XSS. Uses textContent (safe) for
+ * rendering, but this function can be used for extra validation of
+ * data from external sources (Whisper output, translation API).
+ */
+function sanitizeText(text) {
+  if (typeof text !== "string") return "";
+  // Remove control characters except newlines and tabs
+  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+}
+
+// ========== Whisper WASM STT ==========
+let whisperPipeline = null;
+let whisperLoading = false;
+let whisperMediaRecorder = null;
+let whisperAudioChunks = [];
+let whisperVAD = null; // VAD state object
+
+/**
+ * Lazy-load Transformers.js and initialize Whisper pipeline.
+ * Shows progress overlay during model download.
+ */
+async function initWhisper() {
+  if (whisperPipeline) return whisperPipeline;
+  if (whisperLoading) return null; // prevent double init
+
+  whisperLoading = true;
+  showModelLoading("音声認識モデルを準備中...");
+
+  try {
+    const { pipeline, env } = await import(TRANSFORMERS_CDN);
+
+    // Security: disable local model loading, only use verified remote models
+    env.allowLocalModels = false;
+
+    updateModelLoading("モデルをダウンロード中...", 0);
+
+    whisperPipeline = await pipeline(
+      "automatic-speech-recognition",
+      WHISPER_MODEL,
+      {
+        dtype: "q8", // quantized for smaller size + faster inference
+        progress_callback: (progress) => {
+          if (progress.status === "download" || progress.status === "progress") {
+            const pct = progress.progress ? Math.round(progress.progress) : 0;
+            const file = progress.file || "";
+            updateModelLoading(
+              "モデルをダウンロード中...",
+              pct,
+              file ? `${file} (${pct}%)` : `${pct}%`
+            );
+          } else if (progress.status === "ready") {
+            updateModelLoading("準備完了", 100);
+          }
+        },
+      }
+    );
+
+    hideModelLoading();
+    whisperLoading = false;
+    return whisperPipeline;
+  } catch (err) {
+    console.error("[whisper] initialization failed:", err);
+    hideModelLoading();
+    whisperLoading = false;
+    showToast("モデルの読み込みに失敗しました");
+    return null;
+  }
+}
+
+/**
+ * Convert audio blob to Float32Array at 16kHz mono for Whisper.
+ */
+async function audioToFloat32(blob) {
+  const arrayBuffer = await blob.arrayBuffer();
+  const audioCtx = new AudioContext();
+
+  try {
+    const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+    // Resample to 16kHz mono using OfflineAudioContext
+    const targetSampleRate = 16000;
+    const numSamples = Math.ceil(decoded.duration * targetSampleRate);
+    const offlineCtx = new OfflineAudioContext(1, numSamples, targetSampleRate);
+    const source = offlineCtx.createBufferSource();
+    source.buffer = decoded;
+    source.connect(offlineCtx.destination);
+    source.start();
+    const resampled = await offlineCtx.startRendering();
+    return resampled.getChannelData(0);
+  } finally {
+    audioCtx.close();
+  }
+}
+
+/**
+ * Transcribe audio blob using Whisper WASM.
+ */
+async function transcribeWithWhisper(audioBlob) {
+  const transcriber = await initWhisper();
+  if (!transcriber) return "";
+
+  recognitionOutput.innerHTML =
+    '<span class="placeholder">音声を処理中...</span>';
+
+  try {
+    const audioData = await audioToFloat32(audioBlob);
+
+    // Skip if audio is too short (< 0.5 seconds)
+    if (audioData.length < 8000) {
+      console.log("[whisper] audio too short, skipping");
+      return "";
+    }
+
+    const langCode = inputLangSelect.value.split("-")[0];
+    const result = await transcriber(audioData, {
+      language: langCode,
+      task: "transcribe",
+    });
+
+    return sanitizeText(result.text || "");
+  } catch (err) {
+    console.error("[whisper] transcription error:", err);
+    showToast("音声認識に失敗しました");
+    return "";
+  }
+}
+
+// ========== Model Loading UI ==========
+function showModelLoading(text) {
+  modelLoadingText.textContent = text;
+  modelLoadingBar.style.width = "0%";
+  modelLoadingDetail.textContent = "";
+  modelLoading.classList.remove("hidden");
+}
+
+function updateModelLoading(text, percent, detail) {
+  modelLoadingText.textContent = text;
+  modelLoadingBar.style.width = percent + "%";
+  if (detail) modelLoadingDetail.textContent = detail;
+}
+
+function hideModelLoading() {
+  modelLoading.classList.add("hidden");
+}
+
+// ========== VAD (Voice Activity Detection) ==========
+/**
+ * Create and start VAD monitoring on a media stream.
+ * Returns a VAD control object with stop() method.
+ */
+function createVAD(stream, options = {}) {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const analyser = audioContext.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.8;
+
+  const source = audioContext.createMediaStreamSource(stream);
+  source.connect(analyser);
+
+  const threshold = options.threshold || 15;
+  const silenceTimeout = options.silenceTimeout || 2000;
+  const onSpeechStart = options.onSpeechStart || (() => {});
+  const onSpeechEnd = options.onSpeechEnd || (() => {});
+  const onLevel = options.onLevel || (() => {});
+
+  let isSpeaking = false;
+  let speechDetected = false; // has speech been detected at all
+  let silenceTimer = null;
+  let running = true;
+
+  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+  function monitor() {
+    if (!running) return;
+
+    analyser.getByteFrequencyData(dataArray);
+
+    // Calculate RMS energy level
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      sum += dataArray[i] * dataArray[i];
+    }
+    const rms = Math.sqrt(sum / dataArray.length);
+    // Normalize to 0-100 for UI
+    const level = Math.min(100, Math.round(rms / 1.28));
+    onLevel(level);
+
+    if (rms > threshold) {
+      if (!isSpeaking) {
+        isSpeaking = true;
+        speechDetected = true;
+        onSpeechStart();
+      }
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+        if (!running) return;
+        isSpeaking = false;
+        onSpeechEnd();
+      }, silenceTimeout);
+    }
+
+    requestAnimationFrame(monitor);
+  }
+
+  monitor();
+
+  return {
+    stop() {
+      running = false;
+      clearTimeout(silenceTimer);
+      try { source.disconnect(); } catch (e) { /* ignore */ }
+      audioContext.close().catch(() => {});
+    },
+    get speechDetected() { return speechDetected; },
+    get isSpeaking() { return isSpeaking; },
+  };
+}
+
+/**
+ * Show/hide VAD level indicator and update bar width.
+ */
+function updateVADLevel(level) {
+  if (vadBar) vadBar.style.width = level + "%";
+}
+
+function showVADIndicator() {
+  if (vadIndicator) vadIndicator.classList.remove("hidden");
+}
+
+function hideVADIndicator() {
+  if (vadIndicator) vadIndicator.classList.add("hidden");
+  if (vadBar) vadBar.style.width = "0%";
+}
+
+// ========== Speech Recognition Setup (Web Speech API path) ==========
 // iOS-specific: track restart attempts to prevent infinite loops
 let restartAttempts = 0;
 const MAX_RESTART_ATTEMPTS = 5;
@@ -195,13 +443,13 @@ function createRecognition() {
     recognitionOutput.innerHTML = "";
     if (finalTranscript) {
       const finalSpan = document.createElement("span");
-      finalSpan.textContent = finalTranscript;
+      finalSpan.textContent = sanitizeText(finalTranscript);
       recognitionOutput.appendChild(finalSpan);
     }
     if (interim) {
       const interimSpan = document.createElement("span");
       interimSpan.className = "interim";
-      interimSpan.textContent = interim;
+      interimSpan.textContent = sanitizeText(interim);
       recognitionOutput.appendChild(interimSpan);
     }
     if (!finalTranscript && !interim) {
@@ -267,7 +515,6 @@ let toggleLock = false;
 
 async function toggleRecording() {
   if (toggleLock) return;
-  if (!SpeechRecognition) return;
 
   toggleLock = true;
   setTimeout(() => { toggleLock = false; }, 400);
@@ -286,6 +533,17 @@ async function startRecording() {
   // Release any leftover mic stream from previous session
   releaseMicStream();
 
+  if (useWhisperSTT) {
+    await startWhisperRecording();
+  } else {
+    await startWebSpeechRecording();
+  }
+}
+
+/**
+ * Start recording using Web Speech API (default path for browsers with support).
+ */
+async function startWebSpeechRecording() {
   // iOS: forcefully re-acquire mic stream before each session.
   // Without this, 2nd+ recordings silently fail because iOS WebKit
   // releases the audio session after the previous recognition ends.
@@ -324,8 +582,92 @@ async function startRecording() {
   }
 }
 
+/**
+ * Start recording using Whisper WASM (for iOS PWA standalone and fallback).
+ * Captures audio via MediaRecorder and uses VAD for UX.
+ */
+async function startWhisperRecording() {
+  try {
+    activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    console.error("[whisper] mic acquisition failed:", e);
+    micLabel.textContent = "マイクの権限を許可してください";
+    micLabel.classList.add("error");
+    return;
+  }
+
+  // Small delay for iOS audio session initialization
+  if (isIOS) {
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  finalTranscript = "";
+  accumulatedTranscript = "";
+  whisperAudioChunks = [];
+
+  // Determine supported MIME type
+  const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+    ? "audio/webm;codecs=opus"
+    : MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "audio/mp4";
+
+  try {
+    whisperMediaRecorder = new MediaRecorder(activeMicStream, { mimeType });
+  } catch (e) {
+    // Fallback: let browser choose
+    whisperMediaRecorder = new MediaRecorder(activeMicStream);
+  }
+
+  whisperMediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) whisperAudioChunks.push(e.data);
+  };
+
+  whisperMediaRecorder.start(1000); // collect chunks every second
+  isRecording = true;
+
+  // Start VAD for visual feedback and auto-stop
+  whisperVAD = createVAD(activeMicStream, {
+    threshold: 15,
+    silenceTimeout: 2000,
+    onSpeechStart: () => {
+      console.log("[VAD] speech started");
+      micBtn.classList.add("vad-active");
+    },
+    onSpeechEnd: () => {
+      console.log("[VAD] speech ended (silence detected)");
+      micBtn.classList.remove("vad-active");
+      // Auto-stop after silence only if speech was detected
+      if (isRecording && whisperVAD && whisperVAD.speechDetected) {
+        stopRecording();
+      }
+    },
+    onLevel: updateVADLevel,
+  });
+
+  showVADIndicator();
+  micBtn.classList.add("recording");
+  micIcon.classList.add("hidden");
+  stopIcon.classList.remove("hidden");
+  micLabel.textContent = labels.tapStop;
+  micLabel.classList.add("recording");
+  micLabel.classList.remove("error");
+  recognitionOutput.innerHTML =
+    '<span class="placeholder">聞き取り中... 話し終わると自動停止します</span>';
+}
+
 function stopRecording() {
+  const wasRecording = isRecording;
   isRecording = false;
+
+  if (useWhisperSTT && wasRecording) {
+    stopWhisperRecording();
+  } else {
+    stopWebSpeechRecording();
+  }
+}
+
+function stopWebSpeechRecording() {
   if (recognition) {
     try { recognition.abort(); } catch (e) { /* ignore */ }
     recognition = null;
@@ -333,19 +675,12 @@ function stopRecording() {
   // Explicitly release mic stream so iOS stops showing the mic indicator
   releaseMicStream();
 
-  micBtn.classList.remove("recording");
-  micIcon.classList.remove("hidden");
-  stopIcon.classList.add("hidden");
-  micLabel.textContent = labels.tapStart;
-  micLabel.classList.remove("recording");
-  micLabel.classList.remove("error");
+  resetMicUI();
 
   if (finalTranscript.trim()) {
     // iOS: initiate clipboard write NOW (in gesture context) using
     // ClipboardItem with Promise<Blob>. The clipboard slot is reserved
     // immediately, and the content is filled when translation completes.
-    // This works reliably on every attempt because the clipboard.write()
-    // call happens synchronously within the user's tap gesture.
     let pendingCopy = null;
     if (isIOS && autoCopyToggle.checked) {
       pendingCopy = initIOSClipboardWrite();
@@ -353,6 +688,79 @@ function stopRecording() {
 
     translateText(finalTranscript, true, pendingCopy);
   }
+}
+
+/**
+ * Stop Whisper recording, process audio, and display results.
+ */
+function stopWhisperRecording() {
+  // Stop VAD
+  if (whisperVAD) {
+    whisperVAD.stop();
+    whisperVAD = null;
+  }
+  hideVADIndicator();
+
+  // iOS: reserve clipboard slot in gesture context before async processing
+  let pendingCopy = null;
+  if (isIOS && autoCopyToggle.checked) {
+    pendingCopy = initIOSClipboardWrite();
+  }
+
+  resetMicUI();
+
+  if (!whisperMediaRecorder || whisperMediaRecorder.state === "inactive") {
+    releaseMicStream();
+    return;
+  }
+
+  // Stop MediaRecorder and process audio
+  whisperMediaRecorder.onstop = async () => {
+    releaseMicStream();
+
+    if (whisperAudioChunks.length === 0) {
+      showPlaceholder(recognitionOutput, "音声が検出されませんでした");
+      if (pendingCopy) pendingCopy("");
+      return;
+    }
+
+    const mimeType = whisperMediaRecorder.mimeType || "audio/webm";
+    const audioBlob = new Blob(whisperAudioChunks, { type: mimeType });
+    whisperAudioChunks = [];
+
+    recognitionOutput.innerHTML =
+      '<span class="placeholder">音声を処理中...</span>';
+
+    const text = await transcribeWithWhisper(audioBlob);
+
+    if (text && text.trim()) {
+      finalTranscript = text.trim();
+      recognitionOutput.innerHTML = "";
+      const span = document.createElement("span");
+      span.textContent = sanitizeText(finalTranscript);
+      recognitionOutput.appendChild(span);
+
+      translateText(finalTranscript, true, pendingCopy);
+    } else {
+      showPlaceholder(recognitionOutput, "音声を認識できませんでした。もう一度お試しください。");
+      if (pendingCopy) pendingCopy("");
+    }
+  };
+
+  whisperMediaRecorder.stop();
+}
+
+/**
+ * Reset mic button and label to idle state.
+ */
+function resetMicUI() {
+  micBtn.classList.remove("recording");
+  micBtn.classList.remove("vad-active");
+  micIcon.classList.remove("hidden");
+  stopIcon.classList.add("hidden");
+  micLabel.textContent = labels.tapStart;
+  micLabel.classList.remove("recording");
+  micLabel.classList.remove("error");
 }
 
 /**
@@ -459,7 +867,7 @@ async function translateText(text, saveToHistory, pendingIOSCopy) {
   if (sourceLang === targetLang) {
     translationOutput.innerHTML = "";
     const span = document.createElement("span");
-    span.textContent = text;
+    span.textContent = sanitizeText(text);
     translationOutput.appendChild(span);
     if (saveToHistory) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
@@ -485,7 +893,7 @@ async function translateText(text, saveToHistory, pendingIOSCopy) {
     const data = await response.json();
 
     if (data.responseStatus === 200 && data.responseData) {
-      const translated = data.responseData.translatedText;
+      const translated = sanitizeText(data.responseData.translatedText);
       translationOutput.innerHTML = "";
       const span = document.createElement("span");
       span.textContent = translated;
@@ -645,8 +1053,8 @@ function saveHistory(items) {
 function addHistory(original, translated, inputLang, outputLang) {
   const items = getHistory();
   items.unshift({
-    original,
-    translated,
+    original: sanitizeText(original),
+    translated: sanitizeText(translated),
     inputLang,
     outputLang,
     timestamp: Date.now(),
@@ -730,15 +1138,22 @@ document.addEventListener("visibilitychange", () => {
       // Recognition is likely dead after iOS background — stop cleanly
       console.log("[visibility] page became visible while recording — resetting");
       isRecording = false;
+
       if (recognition) {
         try { recognition.abort(); } catch (e) { /* ignore */ }
         recognition = null;
       }
+      if (whisperVAD) {
+        whisperVAD.stop();
+        whisperVAD = null;
+      }
+      hideVADIndicator();
+      if (whisperMediaRecorder && whisperMediaRecorder.state !== "inactive") {
+        try { whisperMediaRecorder.stop(); } catch (e) { /* ignore */ }
+      }
+
       releaseMicStream();
-      micBtn.classList.remove("recording");
-      micIcon.classList.remove("hidden");
-      stopIcon.classList.add("hidden");
-      micLabel.classList.remove("recording");
+      resetMicUI();
       micLabel.textContent = "アプリに戻りました。タップして再開";
     }
 
@@ -781,6 +1196,12 @@ function showPlaceholder(element, text) {
   element.appendChild(span);
 }
 
+// ========== Service Worker Registration ==========
+// Moved from inline script in index.html for CSP compliance
+if ("serviceWorker" in navigator && !isElectron) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
 // ========== Expose for E2E Testing ==========
 // Only used by test.html iframe; no effect in production
 window.writeToClipboard = writeToClipboard;
@@ -790,3 +1211,5 @@ window.getHistory = getHistory;
 window.addHistory = addHistory;
 window.renderHistory = renderHistory;
 window.toggleRecording = toggleRecording;
+window.useWhisperSTT = useWhisperSTT;
+window.sanitizeText = sanitizeText;

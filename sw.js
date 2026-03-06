@@ -1,9 +1,16 @@
-const CACHE_NAME = "voice-input-v6";
+const CACHE_NAME = "voice-input-v7";
 const ASSETS = [
   "./index.html",
   "./style.css",
   "./app.js",
   "./manifest.json",
+];
+
+// Hosts that should always go to network (never cache)
+const NETWORK_ONLY_HOSTS = [
+  "api.mymemory.translated.net",
+  "cdn.jsdelivr.net",
+  "huggingface.co",
 ];
 
 // Install: cache core assets, skip waiting to activate immediately
@@ -33,8 +40,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Translation API — always network, no cache
-  if (url.hostname === "api.mymemory.translated.net") {
+  // External APIs and CDN — always network, no cache
+  if (NETWORK_ONLY_HOSTS.includes(url.hostname)) {
     event.respondWith(fetch(event.request));
     return;
   }
