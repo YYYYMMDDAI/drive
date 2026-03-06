@@ -337,9 +337,18 @@ function stopRecording() {
   micLabel.classList.remove("error");
 
   if (finalTranscript.trim()) {
-    // Always translate first; auto-copy happens AFTER translation completes
-    // (inside translateText when saveToHistory=true and autoCopyToggle is on)
-    translateText(finalTranscript, true);
+    // On iOS, clipboard access must be reserved during the user gesture.
+    // We create a deferred promise that resolves with the translated text,
+    // and pass it to writeToClipboardDeferred NOW (in gesture context).
+    if (isIOS && autoCopyToggle.checked) {
+      let resolveCopy;
+      const copyPromise = new Promise((resolve) => { resolveCopy = resolve; });
+      writeToClipboardDeferred(copyPromise);
+      // translateText will call resolveCopy with the translated text
+      translateText(finalTranscript, true, resolveCopy);
+    } else {
+      translateText(finalTranscript, true);
+    }
   }
 }
 
@@ -393,8 +402,11 @@ function scheduleTranslation(text) {
   translateTimer = setTimeout(() => translateText(text, false), 500);
 }
 
-async function translateText(text, saveToHistory) {
-  if (!text.trim()) return;
+async function translateText(text, saveToHistory, deferredCopyResolve) {
+  if (!text.trim()) {
+    if (deferredCopyResolve) deferredCopyResolve(text);
+    return;
+  }
 
   const sourceLang = inputLangSelect.value.split("-")[0];
   const targetLang = outputLangSelect.value;
@@ -406,7 +418,9 @@ async function translateText(text, saveToHistory) {
     translationOutput.appendChild(span);
     if (saveToHistory) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
-      if (autoCopyToggle.checked) {
+      if (deferredCopyResolve) {
+        deferredCopyResolve(text);
+      } else if (autoCopyToggle.checked) {
         writeToClipboard(text);
       }
     }
@@ -434,21 +448,64 @@ async function translateText(text, saveToHistory) {
         addHistory(text, translated, inputLangSelect.value, outputLangSelect.value);
       }
 
-      if (saveToHistory && autoCopyToggle.checked) {
+      if (deferredCopyResolve) {
+        // Resolve the deferred promise — clipboard write reserved during gesture
+        deferredCopyResolve(translated);
+      } else if (saveToHistory && autoCopyToggle.checked) {
         writeToClipboard(translated);
       }
     } else {
+      if (deferredCopyResolve) deferredCopyResolve(text);
       translationOutput.innerHTML =
         '<span class="placeholder">翻訳に失敗しました。もう一度お試しください。</span>';
     }
   } catch (error) {
     console.error("Translation error:", error);
+    if (deferredCopyResolve) deferredCopyResolve(text);
     translationOutput.innerHTML =
       '<span class="placeholder">翻訳エラー: ネットワークを確認してください。</span>';
   }
 }
 
 // ========== Clipboard — cross-platform with iOS fallback ==========
+
+/**
+ * Write text to clipboard using ClipboardItem with a deferred promise.
+ * On iOS PWA, both navigator.clipboard.writeText and execCommand('copy')
+ * fail outside the original user-gesture call stack (e.g. after await/fetch).
+ * ClipboardItem accepts a Promise<Blob> — the browser reserves clipboard
+ * access during the gesture and resolves the content later.
+ */
+function writeToClipboardDeferred(contentPromise) {
+  if (typeof ClipboardItem !== "undefined" && navigator.clipboard && navigator.clipboard.write) {
+    try {
+      const item = new ClipboardItem({
+        "text/plain": contentPromise.then(
+          (text) => new Blob([text], { type: "text/plain" })
+        ),
+      });
+      return navigator.clipboard.write([item]).then(() => {
+        // Toast is shown after contentPromise resolves so text is ready
+        contentPromise.then(() => showToast("クリップボードにコピーしました"));
+        return true;
+      }).catch((err) => {
+        console.warn("[clipboard] deferred write failed:", err);
+        // Cannot fallback here — we're already outside the gesture
+        contentPromise.then((text) => {
+          showCopyOverlay(text);
+        });
+        return false;
+      });
+    } catch (e) {
+      console.warn("[clipboard] ClipboardItem creation failed:", e);
+    }
+  }
+  // Browser doesn't support ClipboardItem — show manual copy overlay after content resolves
+  contentPromise.then((text) => {
+    showCopyOverlay(text);
+  });
+  return Promise.resolve(false);
+}
 
 /**
  * Write text to clipboard. Uses Clipboard API with fallback to
@@ -511,6 +568,40 @@ function fallbackCopy(text) {
     showToast("コピーに失敗しました");
     return Promise.resolve(false);
   }
+}
+
+/**
+ * Show a tap-to-copy overlay when clipboard write is not possible
+ * (e.g. iOS PWA outside user gesture and ClipboardItem not supported).
+ */
+function showCopyOverlay(text) {
+  // Remove any existing overlay
+  const existing = document.getElementById("copy-overlay");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "copy-overlay";
+  overlay.style.cssText =
+    "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);" +
+    "background:#6c5ce7;color:#fff;padding:14px 28px;border-radius:12px;" +
+    "font-size:16px;z-index:10000;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.4);" +
+    "text-align:center;max-width:80vw;animation:fadeIn .2s ease;";
+  overlay.textContent = "タップしてコピー: " + (text.length > 30 ? text.slice(0, 30) + "…" : text);
+
+  overlay.addEventListener("click", () => {
+    writeToClipboard(text);
+    overlay.remove();
+  });
+  overlay.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    writeToClipboard(text);
+    overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
+
+  // Auto-dismiss after 6 seconds
+  setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 6000);
 }
 
 function copyToClipboard(element, btn) {
@@ -649,6 +740,43 @@ setInterval(() => {
   renderHistory();
 }, 5 * 60 * 1000);
 
+// ========== iOS PWA: Recover from app switch ==========
+// When user switches to another app and comes back, iOS kills the audio session
+// and SpeechRecognition silently dies. We detect this via visibilitychange and
+// cleanly stop + show a "tap to restart" message so the user knows to tap again.
+// We also re-acquire the mic proactively so the next tap works immediately.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    if (isRecording) {
+      // Recognition is likely dead after iOS background — stop cleanly
+      console.log("[visibility] page became visible while recording — resetting");
+      isRecording = false;
+      if (recognition) {
+        try { recognition.abort(); } catch (e) { /* ignore */ }
+        recognition = null;
+      }
+      micBtn.classList.remove("recording");
+      micIcon.classList.remove("hidden");
+      stopIcon.classList.add("hidden");
+      micLabel.classList.remove("recording");
+      micLabel.textContent = "アプリに戻りました。タップして再開";
+    }
+
+    // Proactively re-acquire mic so next recording starts smoothly
+    if (isIOS) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => stream.getTracks().forEach((t) => t.stop()))
+        .catch(() => {});
+    }
+  } else {
+    // Going to background — stop recording to release resources
+    if (isRecording) {
+      console.log("[visibility] page hidden while recording — stopping");
+      stopRecording();
+    }
+  }
+});
+
 // ========== Language Change Handlers ==========
 inputLangSelect.addEventListener("change", () => {
   if (isRecording) {
@@ -676,6 +804,7 @@ function showPlaceholder(element, text) {
 // ========== Expose for E2E Testing ==========
 // Only used by test.html iframe; no effect in production
 window.writeToClipboard = writeToClipboard;
+window.writeToClipboardDeferred = writeToClipboardDeferred;
 window.fallbackCopy = fallbackCopy;
 window.showToast = showToast;
 window.getHistory = getHistory;
