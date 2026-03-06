@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Voice Input — 音声入力 & 翻訳</title>
   <link rel="stylesheet" href="style.css">
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6c5ce7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
   <div class="container">
@@ -116,5 +122,11 @@
   </div>
 
   <script src="app.js"></script>
+  <script>
+    // Register Service Worker for PWA (only in browser, not Electron)
+    if ("serviceWorker" in navigator && !navigator.userAgent.includes("Electron")) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
 </body>
 </html>

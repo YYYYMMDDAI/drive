@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<p>このファイルをブラウザで開いてアイコンPNGをダウンロードしてください。</p>
+<canvas id="c" width="512" height="512"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const img = new Image();
+img.onload = () => {
+  ctx.drawImage(img, 0, 0, 512, 512);
+
+  // 512px
+  let a = document.createElement('a');
+  a.download = 'icon-512.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+
+  // 192px
+  const c2 = document.createElement('canvas');
+  c2.width = 192; c2.height = 192;
+  c2.getContext('2d').drawImage(canvas, 0, 0, 192, 192);
+  let b = document.createElement('a');
+  b.download = 'icon-192.png';
+  b.href = c2.toDataURL('image/png');
+  setTimeout(() => b.click(), 500);
+
+  // 256px (for Electron/Windows)
+  const c3 = document.createElement('canvas');
+  c3.width = 256; c3.height = 256;
+  c3.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+  let d = document.createElement('a');
+  d.download = 'icon.png';
+  d.href = c3.toDataURL('image/png');
+  setTimeout(() => d.click(), 1000);
+};
+img.src = 'icon.svg';
+</script>
+</body>
+</html>
