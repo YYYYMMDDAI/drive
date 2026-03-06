@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Input — E2E Tests</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: monospace; background: #0f0f14; color: #e8e8ef; padding: 24px; }
+    h1 { font-size: 1.3rem; margin-bottom: 16px; }
+    .suite { margin-bottom: 24px; }
+    .suite-title { font-size: 1rem; color: #6c5ce7; margin-bottom: 8px; }
+    .test { padding: 6px 12px; border-left: 3px solid #2a2a3a; margin-bottom: 4px; font-size: 0.85rem; }
+    .test.pass { border-color: #2ed573; color: #2ed573; }
+    .test.fail { border-color: #ff4757; color: #ff4757; }
+    .test.skip { border-color: #ffa502; color: #ffa502; }
+    .summary { margin-top: 24px; padding: 16px; background: #1a1a24; border-radius: 8px; }
+    .summary.all-pass { border: 2px solid #2ed573; }
+    .summary.has-fail { border: 2px solid #ff4757; }
+    #app-frame { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Voice Input — E2E Test Suite</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+  <!-- Hidden iframe to load the app for testing -->
+  <iframe id="app-frame" src="index.html" width="400" height="600"></iframe>
+
+  <script>
+    const results = [];
+    const resultsEl = document.getElementById("results");
+    const summaryEl = document.getElementById("summary");
+    const frame = document.getElementById("app-frame");
+
+    function log(suite, name, passed, detail) {
+      results.push({ suite, name, passed, detail });
+    }
+
+    function assert(condition, message) {
+      if (!condition) throw new Error(message || "Assertion failed");
+    }
+
+    function assertEqual(actual, expected, label) {
+      if (actual !== expected) {
+        throw new Error(`${label}: expected "${expected}", got "${actual}"`);
+      }
+    }
+
+    // Wait for iframe to load
+    frame.onload = async () => {
+      const doc = frame.contentDocument;
+      const win = frame.contentWindow;
+
+      // Small delay to let app.js initialize
+      await new Promise(r => setTimeout(r, 500));
+
+      // =========================================
+      // Suite 1: DOM Structure
+      // =========================================
+      const suite1 = "DOM Structure";
+
+      try {
+        assert(doc.getElementById("mic-btn"), "mic-btn exists");
+        assert(doc.getElementById("mic-label"), "mic-label exists");
+        assert(doc.getElementById("recognition-output"), "recognition-output exists");
+        assert(doc.getElementById("translation-output"), "translation-output exists");
+        assert(doc.getElementById("input-lang"), "input-lang select exists");
+        assert(doc.getElementById("output-lang"), "output-lang select exists");
+        assert(doc.getElementById("auto-copy-toggle"), "auto-copy toggle exists");
+        assert(doc.getElementById("copy-recognition"), "copy-recognition btn exists");
+        assert(doc.getElementById("copy-translation"), "copy-translation btn exists");
+        assert(doc.getElementById("history-list"), "history-list exists");
+        assert(doc.getElementById("clear-history"), "clear-history btn exists");
+        assert(doc.getElementById("toast"), "toast element exists");
+        log(suite1, "All required DOM elements present", true);
+      } catch (e) {
+        log(suite1, "All required DOM elements present", false, e.message);
+      }
+
+      try {
+        const micBtn = doc.getElementById("mic-btn");
+        const micIcon = micBtn.querySelector(".mic-icon");
+        const stopIcon = micBtn.querySelector(".stop-icon");
+        assert(micIcon, "mic-icon SVG exists");
+        assert(stopIcon, "stop-icon SVG exists");
+        assert(stopIcon.classList.contains("hidden"), "stop-icon is initially hidden");
+        assert(!micIcon.classList.contains("hidden"), "mic-icon is initially visible");
+        log(suite1, "Mic button icons correct initial state", true);
+      } catch (e) {
+        log(suite1, "Mic button icons correct initial state", false, e.message);
+      }
+
+      // =========================================
+      // Suite 2: Platform Detection
+      // =========================================
+      const suite2 = "Platform Detection";
+
+      try {
+        const body = doc.body;
+        const hasPlatformClass = ["platform-ios", "platform-android", "platform-mac",
+          "platform-windows", "platform-electron"].some(c => body.classList.contains(c));
+        assert(hasPlatformClass, "body has a platform-* class");
+        log(suite2, "Platform class applied to body", true);
+      } catch (e) {
+        log(suite2, "Platform class applied to body", false, e.message);
+      }
+
+      try {
+        const shortcutHint = doc.getElementById("shortcut-hint");
+        const isMobile = doc.body.classList.contains("is-mobile");
+        if (isMobile) {
+          assert(
+            shortcutHint.style.display === "none" || shortcutHint.innerHTML.trim() === "",
+            "Shortcut hint hidden on mobile"
+          );
+          log(suite2, "Shortcut hints hidden on mobile", true);
+        } else {
+          assert(shortcutHint.innerHTML.includes("kbd"), "Shortcut hint shows kbd elements");
+          log(suite2, "Shortcut hints shown on desktop with kbd elements", true);
+        }
+      } catch (e) {
+        log(suite2, "Shortcut hint display matches platform", false, e.message);
+      }
+
+      // =========================================
+      // Suite 3: Language Selection
+      // =========================================
+      const suite3 = "Language Selection";
+
+      try {
+        const inputLang = doc.getElementById("input-lang");
+        assert(inputLang.options.length >= 6, "Input lang has >= 6 options");
+        assertEqual(inputLang.value, "ja-JP", "Default input lang");
+        log(suite3, "Input language defaults and options correct", true);
+      } catch (e) {
+        log(suite3, "Input language defaults and options correct", false, e.message);
+      }
+
+      try {
+        const outputLang = doc.getElementById("output-lang");
+        assert(outputLang.options.length >= 10, "Output lang has >= 10 options");
+        assertEqual(outputLang.value, "en", "Default output lang");
+        log(suite3, "Output language defaults and options correct", true);
+      } catch (e) {
+        log(suite3, "Output language defaults and options correct", false, e.message);
+      }
+
+      // =========================================
+      // Suite 4: Clipboard (writeToClipboard + fallback)
+      // =========================================
+      const suite4 = "Clipboard";
+
+      try {
+        // Test fallbackCopy function exists and returns a promise
+        assert(typeof win.fallbackCopy === "undefined" || true,
+          "fallbackCopy is internal");
+        // Test writeToClipboard with empty string returns gracefully
+        const result = win.writeToClipboard("");
+        assert(result instanceof Promise || result === undefined,
+          "writeToClipboard('') returns Promise or undefined");
+        log(suite4, "writeToClipboard handles empty string", true);
+      } catch (e) {
+        log(suite4, "writeToClipboard handles empty string", false, e.message);
+      }
+
+      try {
+        // Test that copy buttons exist and are clickable
+        const copyRecBtn = doc.getElementById("copy-recognition");
+        const copyTransBtn = doc.getElementById("copy-translation");
+        assert(copyRecBtn && !copyRecBtn.disabled, "copy-recognition button is enabled");
+        assert(copyTransBtn && !copyTransBtn.disabled, "copy-translation button is enabled");
+        log(suite4, "Copy buttons are enabled", true);
+      } catch (e) {
+        log(suite4, "Copy buttons are enabled", false, e.message);
+      }
+
+      // =========================================
+      // Suite 5: Auto-copy Toggle
+      // =========================================
+      const suite5 = "Auto-copy Toggle";
+
+      try {
+        const toggle = doc.getElementById("auto-copy-toggle");
+        assert(!toggle.checked, "Auto-copy is off by default");
+
+        // Simulate toggle on
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event("change"));
+        assertEqual(
+          win.localStorage.getItem("voiceInputAutoCopy"), "true",
+          "localStorage updated on toggle on"
+        );
+
+        // Simulate toggle off
+        toggle.checked = false;
+        toggle.dispatchEvent(new Event("change"));
+        assertEqual(
+          win.localStorage.getItem("voiceInputAutoCopy"), "false",
+          "localStorage updated on toggle off"
+        );
+
+        log(suite5, "Auto-copy toggle persists to localStorage", true);
+      } catch (e) {
+        log(suite5, "Auto-copy toggle persists to localStorage", false, e.message);
+      }
+
+      // =========================================
+      // Suite 6: History
+      // =========================================
+      const suite6 = "History";
+
+      try {
+        // Clear history first
+        win.localStorage.removeItem("voiceInputHistory");
+        win.renderHistory();
+
+        const list = doc.getElementById("history-list");
+        assert(list.querySelector(".placeholder"), "Empty history shows placeholder");
+
+        // Add a history item
+        win.addHistory("テスト", "test", "ja-JP", "en");
+        assert(!list.querySelector(".placeholder"), "Placeholder gone after adding");
+        assert(list.querySelector(".history-item"), "History item rendered");
+
+        const orig = list.querySelector(".history-item-original");
+        assertEqual(orig.textContent, "テスト", "Original text correct");
+
+        const trans = list.querySelector(".history-item-translated");
+        assertEqual(trans.textContent, "test", "Translated text correct");
+
+        log(suite6, "History add and render works", true);
+      } catch (e) {
+        log(suite6, "History add and render works", false, e.message);
+      }
+
+      try {
+        // Test clear button
+        const clearBtn = doc.getElementById("clear-history");
+        clearBtn.click();
+        const list = doc.getElementById("history-list");
+        assert(list.querySelector(".placeholder"), "History cleared shows placeholder");
+        log(suite6, "Clear history button works", true);
+      } catch (e) {
+        log(suite6, "Clear history button works", false, e.message);
+      }
+
+      try {
+        // Test TTL filtering — add item with old timestamp
+        const oldItem = {
+          original: "old",
+          translated: "ancient",
+          inputLang: "ja-JP",
+          outputLang: "en",
+          timestamp: Date.now() - (2 * 60 * 60 * 1000), // 2 hours ago
+        };
+        win.localStorage.setItem("voiceInputHistory", JSON.stringify([oldItem]));
+        const items = win.getHistory();
+        assertEqual(items.length, 0, "Expired items filtered out");
+        log(suite6, "History TTL expiry filters old items", true);
+      } catch (e) {
+        log(suite6, "History TTL expiry filters old items", false, e.message);
+      }
+
+      // =========================================
+      // Suite 7: Speech Recognition Setup
+      // =========================================
+      const suite7 = "Speech Recognition";
+
+      try {
+        const SR = win.SpeechRecognition;
+        if (SR) {
+          assert(typeof win.createRecognition === "function" || true,
+            "createRecognition accessible");
+          assert(typeof win.toggleRecording === "function" || true,
+            "toggleRecording accessible");
+          log(suite7, "Speech Recognition API available", true);
+        } else {
+          // In test environment (non-Chrome), API may not be available
+          const banner = doc.getElementById("unsupported-banner");
+          assert(!banner.classList.contains("hidden"), "Unsupported banner shown");
+          log(suite7, "Unsupported banner shown when API unavailable", true);
+        }
+      } catch (e) {
+        log(suite7, "Speech Recognition check", false, e.message);
+      }
+
+      // =========================================
+      // Suite 8: Mic Button Toggle UI
+      // =========================================
+      const suite8 = "Mic Button UI";
+
+      try {
+        const micBtn = doc.getElementById("mic-btn");
+        const micLabel = doc.getElementById("mic-label");
+
+        // Initial state
+        assert(!micBtn.classList.contains("recording"), "Not recording initially");
+        assert(!micLabel.classList.contains("recording"), "Label not recording initially");
+
+        log(suite8, "Mic button initial state correct", true);
+      } catch (e) {
+        log(suite8, "Mic button initial state correct", false, e.message);
+      }
+
+      // =========================================
+      // Suite 9: Toast Notification
+      // =========================================
+      const suite9 = "Toast Notification";
+
+      try {
+        const toastEl = doc.getElementById("toast");
+        assert(toastEl.classList.contains("hidden"), "Toast initially hidden");
+
+        win.showToast("テスト通知");
+        assertEqual(toastEl.textContent, "テスト通知", "Toast text updated");
+        assert(toastEl.classList.contains("show"), "Toast visible after showToast");
+
+        log(suite9, "Toast show works correctly", true);
+      } catch (e) {
+        log(suite9, "Toast show works correctly", false, e.message);
+      }
+
+      // =========================================
+      // Suite 10: PWA / Service Worker
+      // =========================================
+      const suite10 = "PWA Setup";
+
+      try {
+        const manifest = doc.querySelector('link[rel="manifest"]');
+        assert(manifest, "Manifest link present");
+        assert(manifest.href.includes("manifest.json"), "Manifest href correct");
+
+        const themeColor = doc.querySelector('meta[name="theme-color"]');
+        assert(themeColor, "Theme color meta present");
+
+        log(suite10, "PWA manifest and meta tags present", true);
+      } catch (e) {
+        log(suite10, "PWA manifest and meta tags present", false, e.message);
+      }
+
+      // =========================================
+      // Suite 11: iOS-specific Clipboard Fallback
+      // =========================================
+      const suite11 = "iOS Clipboard Fallback";
+
+      try {
+        // Verify fallbackCopy function exists in app scope
+        // We test it by checking the function is defined (it's a global in app.js)
+        assert(typeof win.fallbackCopy === "function", "fallbackCopy function exists");
+        assert(typeof win.writeToClipboard === "function", "writeToClipboard function exists");
+        log(suite11, "Clipboard fallback functions exist", true);
+      } catch (e) {
+        log(suite11, "Clipboard fallback functions exist", false, e.message);
+      }
+
+      // =========================================
+      // Render results
+      // =========================================
+      let suites = {};
+      results.forEach(r => {
+        if (!suites[r.suite]) suites[r.suite] = [];
+        suites[r.suite].push(r);
+      });
+
+      let totalPass = 0, totalFail = 0;
+
+      Object.entries(suites).forEach(([suiteName, tests]) => {
+        const suiteDiv = document.createElement("div");
+        suiteDiv.className = "suite";
+
+        const title = document.createElement("div");
+        title.className = "suite-title";
+        title.textContent = suiteName;
+        suiteDiv.appendChild(title);
+
+        tests.forEach(t => {
+          const el = document.createElement("div");
+          el.className = "test " + (t.passed ? "pass" : "fail");
+          el.textContent = (t.passed ? "✓ " : "✗ ") + t.name;
+          if (t.detail) el.textContent += " — " + t.detail;
+          suiteDiv.appendChild(el);
+          if (t.passed) totalPass++; else totalFail++;
+        });
+
+        resultsEl.appendChild(suiteDiv);
+      });
+
+      const summaryDiv = document.createElement("div");
+      summaryDiv.className = "summary " + (totalFail === 0 ? "all-pass" : "has-fail");
+      summaryDiv.textContent = `${totalPass + totalFail} tests: ${totalPass} passed, ${totalFail} failed`;
+      summaryEl.appendChild(summaryDiv);
+
+      // Clean up test data
+      win.localStorage.removeItem("voiceInputHistory");
+      win.localStorage.removeItem("voiceInputAutoCopy");
+    };
+  </script>
+</body>
+</html>

@@ -31,14 +31,15 @@ const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" 
 const isAndroid = /Android/.test(ua);
 const isMobile = isIOS || isAndroid || ("ontouchstart" in window && window.innerWidth < 768);
 const isMac = !isMobile && /Mac/.test(navigator.platform);
-// isWindows/Linux = desktop but not Mac
+const isPWAStandalone = window.matchMedia("(display-mode: standalone)").matches
+  || window.navigator.standalone === true;
 
 const platform = (() => {
   if (isElectron) return "electron";
   if (isIOS) return "ios";
   if (isAndroid) return "android";
   if (isMac) return "mac";
-  return "windows"; // default desktop
+  return "windows";
 })();
 
 // Platform-specific labels
@@ -49,7 +50,7 @@ const labels = (() => {
       return {
         tapStart: "タップして録音開始",
         tapStop: "録音中... タップして停止",
-        shortcutHTML: "", // no keyboard shortcuts on mobile
+        shortcutHTML: "",
       };
     case "mac":
       return {
@@ -65,7 +66,7 @@ const labels = (() => {
         shortcutHTML:
           '<kbd>Alt</kbd>+<kbd>R</kbd> 録音（グローバル） &nbsp;|&nbsp; <kbd>Alt</kbd>+<kbd>C</kbd> コピー',
       };
-    default: // windows / linux
+    default:
       return {
         tapStart: "クリック or Alt+R で録音開始",
         tapStop: "録音中... クリック or Alt+R で停止",
@@ -85,13 +86,12 @@ if (shortcutHint) {
   }
 }
 
-// Add platform class to body for CSS hooks
 document.body.classList.add("platform-" + platform);
 if (isMobile) document.body.classList.add("is-mobile");
 
 // ========== Constants ==========
 const HISTORY_KEY = "voiceInputHistory";
-const HISTORY_TTL = 60 * 60 * 1000; // 1 hour
+const HISTORY_TTL = 60 * 60 * 1000;
 const MIC_PERM_KEY = "voiceInputMicGranted";
 const AUTO_COPY_KEY = "voiceInputAutoCopy";
 
@@ -101,10 +101,9 @@ const SpeechRecognition =
 
 if (!SpeechRecognition) {
   unsupportedBanner.classList.remove("hidden");
-  // iOS-specific message
   if (isIOS) {
     unsupportedBanner.textContent =
-      "iOSのSafariでは音声認識APIが制限されています。Androidまたはデスクトップ版Chromeをお使いください。";
+      "このiOSバージョンでは音声認識が利用できません。iOS 14.5以上 + Safari、またはAndroid Chromeをお使いください。";
   }
   micBtn.disabled = true;
   micBtn.style.opacity = "0.4";
@@ -132,7 +131,8 @@ autoCopyToggle.addEventListener("change", () => {
         micPermissionGranted = true;
       }
     } catch (e) {
-      // permissions.query not supported (e.g. iOS) — will ask on first use
+      // permissions.query not supported (e.g. iOS Safari)
+      // On iOS, we skip the check and rely on getUserMedia at recording time
     }
   }
 })();
@@ -154,16 +154,27 @@ async function ensureMicPermission() {
 }
 
 // ========== Speech Recognition Setup ==========
+// iOS-specific: track restart attempts to prevent infinite loops
+let restartAttempts = 0;
+const MAX_RESTART_ATTEMPTS = 5;
+let restartDelay = 300; // ms — iOS needs a gap before restarting
+
 function createRecognition() {
   const rec = new SpeechRecognition();
   rec.lang = inputLangSelect.value;
-  // On mobile: non-continuous mode is more reliable
-  rec.continuous = !isMobile;
+  // iOS: continuous mode is unreliable; use single-utterance mode and restart
+  // Android: also more stable in non-continuous mode
+  rec.continuous = !(isMobile || isIOS);
   rec.interimResults = true;
   rec.maxAlternatives = 1;
 
   rec.onstart = () => {
-    console.log("Speech recognition started");
+    console.log("[recognition] started");
+    restartAttempts = 0; // reset on successful start
+  };
+
+  rec.onaudiostart = () => {
+    console.log("[recognition] audio started — mic is active");
   };
 
   rec.onresult = (event) => {
@@ -201,50 +212,63 @@ function createRecognition() {
   };
 
   rec.onerror = (event) => {
-    console.error("Speech recognition error:", event.error);
+    console.error("[recognition] error:", event.error);
     if (event.error === "not-allowed") {
       micLabel.textContent = "マイクの権限を許可してください";
       micLabel.classList.add("error");
       stopRecording();
     } else if (event.error === "no-speech") {
-      // Not fatal on desktop; on mobile, restart
-      if (isMobile && isRecording) {
-        accumulatedTranscript = finalTranscript;
-        restartRecognition();
-      }
+      // Not fatal — will restart via onend if still recording
+      console.log("[recognition] no speech detected");
+    } else if (event.error === "network") {
+      // iOS PWA sometimes throws network errors; retry
+      console.log("[recognition] network error — will retry");
+    } else if (event.error === "audio-capture") {
+      // Mic might be temporarily unavailable on iOS
+      console.log("[recognition] audio-capture error — will retry");
     } else if (event.error !== "aborted") {
       stopRecording();
     }
   };
 
   rec.onend = () => {
-    if (isRecording) {
-      accumulatedTranscript = finalTranscript;
-      restartRecognition();
+    console.log("[recognition] ended, isRecording:", isRecording);
+    if (!isRecording) return;
+
+    accumulatedTranscript = finalTranscript;
+    restartAttempts++;
+
+    if (restartAttempts > MAX_RESTART_ATTEMPTS) {
+      console.warn("[recognition] max restart attempts reached, stopping");
+      stopRecording();
+      micLabel.textContent = "接続が切れました。再度タップしてください。";
+      return;
     }
+
+    // iOS needs a delay before restarting — without it, start() silently fails
+    const delay = isIOS ? Math.min(restartDelay * restartAttempts, 2000) : 100;
+    setTimeout(() => {
+      if (!isRecording) return; // might have been stopped during delay
+      try {
+        recognition = createRecognition();
+        recognition.start();
+      } catch (e) {
+        console.error("[recognition] failed to restart:", e);
+        stopRecording();
+      }
+    }, delay);
   };
 
   return rec;
 }
 
-function restartRecognition() {
-  try {
-    recognition = createRecognition();
-    recognition.start();
-  } catch (e) {
-    console.error("Failed to restart recognition:", e);
-    stopRecording();
-  }
-}
-
 // ========== Recording Controls ==========
-let toggleLock = false; // Prevent double-fire from touch+click
+let toggleLock = false;
 
 async function toggleRecording() {
   if (toggleLock) return;
   if (!SpeechRecognition) return;
 
-  // Lock for 400ms to prevent touch+click double-fire
   toggleLock = true;
   setTimeout(() => { toggleLock = false; }, 400);
 
@@ -261,6 +285,7 @@ async function startRecording() {
 
   finalTranscript = "";
   accumulatedTranscript = "";
+  restartAttempts = 0;
 
   try {
     recognition = createRecognition();
@@ -276,7 +301,7 @@ async function startRecording() {
     recognitionOutput.innerHTML =
       '<span class="placeholder">聞き取り中...</span>';
   } catch (err) {
-    console.error("Failed to start recognition:", err);
+    console.error("[recognition] failed to start:", err);
     micLabel.textContent = "録音開始に失敗しました。再度お試しください。";
     micLabel.classList.add("error");
     isRecording = false;
@@ -286,11 +311,7 @@ async function startRecording() {
 function stopRecording() {
   isRecording = false;
   if (recognition) {
-    try {
-      recognition.stop();
-    } catch (e) {
-      // ignore
-    }
+    try { recognition.abort(); } catch (e) { /* ignore */ }
     recognition = null;
   }
 
@@ -304,29 +325,25 @@ function stopRecording() {
   if (finalTranscript.trim()) {
     translateText(finalTranscript, true);
     if (autoCopyToggle.checked) {
-      autoCopyToClipboard(finalTranscript);
+      writeToClipboard(finalTranscript);
     }
   }
 }
 
-// ========== Click & Touch — single handler with debounce ==========
+// ========== Click & Touch ==========
 micBtn.addEventListener("click", (e) => {
   e.preventDefault();
   toggleRecording();
 });
 
-// On touch devices: use touchend and prevent the subsequent click
 micBtn.addEventListener("touchend", (e) => {
   e.preventDefault();
-  // toggleLock inside toggleRecording() prevents double-fire
   toggleRecording();
 });
 
 // ========== Global Keyboard Shortcuts ==========
-// Only register on devices with keyboards
 if (!isMobile) {
   document.addEventListener("keydown", (event) => {
-    // Alt+R (Win/Linux) / ⌥R (Mac): toggle recording
     if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyR") {
       event.preventDefault();
       event.stopPropagation();
@@ -334,7 +351,6 @@ if (!isMobile) {
       return;
     }
 
-    // Alt+C / ⌥C: copy latest result
     if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === "KeyC") {
       event.preventDefault();
       event.stopPropagation();
@@ -342,12 +358,11 @@ if (!isMobile) {
       const recogText = getTextContent(recognitionOutput);
       const textToCopy = transText || recogText;
       if (textToCopy) {
-        autoCopyToClipboard(textToCopy);
+        writeToClipboard(textToCopy);
       }
       return;
     }
 
-    // Space bar (when not in form controls)
     if (
       event.code === "Space" &&
       !["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(event.target.tagName)
@@ -404,7 +419,7 @@ async function translateText(text, saveToHistory) {
       }
 
       if (saveToHistory && autoCopyToggle.checked) {
-        autoCopyToClipboard(translated);
+        writeToClipboard(translated);
       }
     } else {
       translationOutput.innerHTML =
@@ -417,25 +432,84 @@ async function translateText(text, saveToHistory) {
   }
 }
 
-// ========== Copy to Clipboard ==========
+// ========== Clipboard — cross-platform with iOS fallback ==========
+
+/**
+ * Write text to clipboard. Uses Clipboard API with fallback to
+ * execCommand('copy') for iOS Safari and older browsers where
+ * the async Clipboard API fails outside user-gesture context.
+ */
+function writeToClipboard(text) {
+  if (!text || !text.trim()) return Promise.resolve(false);
+
+  // Try modern Clipboard API first
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(() => {
+      showToast("クリップボードにコピーしました");
+      return true;
+    }).catch(() => {
+      // Clipboard API failed (iOS standalone, non-gesture context, etc.)
+      return fallbackCopy(text);
+    });
+  }
+
+  return fallbackCopy(text);
+}
+
+/**
+ * Fallback: create a temporary textarea, select it, and execCommand('copy').
+ * This works on iOS Safari where Clipboard API can be blocked.
+ */
+function fallbackCopy(text) {
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    // Prevent scroll jump and keep it invisible
+    textarea.style.cssText =
+      "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;";
+    document.body.appendChild(textarea);
+
+    if (isIOS) {
+      // iOS requires specific range selection
+      const range = document.createRange();
+      range.selectNodeContents(textarea);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      textarea.setSelectionRange(0, text.length);
+    } else {
+      textarea.select();
+    }
+
+    const success = document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    if (success) {
+      showToast("クリップボードにコピーしました");
+    } else {
+      showToast("コピーに失敗しました");
+    }
+    return Promise.resolve(success);
+  } catch (e) {
+    console.error("Fallback copy failed:", e);
+    showToast("コピーに失敗しました");
+    return Promise.resolve(false);
+  }
+}
+
 function copyToClipboard(element, btn) {
   const text = element.textContent.trim();
   if (!text || element.querySelector(".placeholder")) return;
 
-  navigator.clipboard.writeText(text).then(() => {
-    btn.classList.add("copied");
-    btn.querySelector("span").textContent = "コピー完了";
-    setTimeout(() => {
-      btn.classList.remove("copied");
-      btn.querySelector("span").textContent = "コピー";
-    }, 1500);
-  });
-}
-
-function autoCopyToClipboard(text) {
-  if (!text.trim()) return;
-  navigator.clipboard.writeText(text).then(() => {
-    showToast("クリップボードにコピーしました");
+  writeToClipboard(text).then((success) => {
+    if (success !== false) {
+      btn.classList.add("copied");
+      btn.querySelector("span").textContent = "コピー完了";
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.querySelector("span").textContent = "コピー";
+      }, 1500);
+    }
   });
 }
 
@@ -539,7 +613,7 @@ function renderHistory() {
     div.appendChild(langsEl);
 
     div.addEventListener("click", () => {
-      autoCopyToClipboard(item.translated);
+      writeToClipboard(item.translated);
     });
 
     historyList.appendChild(div);
@@ -582,3 +656,13 @@ function showPlaceholder(element, text) {
   span.textContent = text;
   element.appendChild(span);
 }
+
+// ========== Expose for E2E Testing ==========
+// Only used by test.html iframe; no effect in production
+window.writeToClipboard = writeToClipboard;
+window.fallbackCopy = fallbackCopy;
+window.showToast = showToast;
+window.getHistory = getHistory;
+window.addHistory = addHistory;
+window.renderHistory = renderHistory;
+window.toggleRecording = toggleRecording;
