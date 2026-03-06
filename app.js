@@ -10,12 +10,15 @@ const outputLangSelect = document.getElementById("output-lang");
 const copyRecognitionBtn = document.getElementById("copy-recognition");
 const copyTranslationBtn = document.getElementById("copy-translation");
 const unsupportedBanner = document.getElementById("unsupported-banner");
+const shortcutHint = document.getElementById("shortcut-hint");
 
 // ========== State ==========
 let isRecording = false;
 let recognition = null;
 let finalTranscript = "";
+let accumulatedTranscript = ""; // persists across auto-restarts
 let translateTimer = null;
+let micPermissionGranted = false;
 
 // ========== Browser Support Check ==========
 const SpeechRecognition =
@@ -28,6 +31,23 @@ if (!SpeechRecognition) {
   micBtn.style.cursor = "not-allowed";
 }
 
+// ========== Microphone Permission ==========
+async function ensureMicPermission() {
+  if (micPermissionGranted) return true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Stop the stream immediately — we just needed the permission
+    stream.getTracks().forEach((track) => track.stop());
+    micPermissionGranted = true;
+    return true;
+  } catch (err) {
+    console.error("Microphone permission denied:", err);
+    micLabel.textContent = "マイクの権限を許可してください";
+    micLabel.classList.add("error");
+    return false;
+  }
+}
+
 // ========== Speech Recognition Setup ==========
 function createRecognition() {
   const rec = new SpeechRecognition();
@@ -36,18 +56,25 @@ function createRecognition() {
   rec.interimResults = true;
   rec.maxAlternatives = 1;
 
+  rec.onstart = () => {
+    console.log("Speech recognition started");
+  };
+
   rec.onresult = (event) => {
     let interim = "";
-    finalTranscript = "";
+    let sessionFinal = "";
 
     for (let i = 0; i < event.results.length; i++) {
       const result = event.results[i];
       if (result.isFinal) {
-        finalTranscript += result[0].transcript;
+        sessionFinal += result[0].transcript;
       } else {
         interim += result[0].transcript;
       }
     }
+
+    // Combine accumulated (from previous auto-restart sessions) + current session
+    finalTranscript = accumulatedTranscript + sessionFinal;
 
     // Update UI
     recognitionOutput.innerHTML = "";
@@ -74,20 +101,27 @@ function createRecognition() {
     console.error("Speech recognition error:", event.error);
     if (event.error === "not-allowed") {
       micLabel.textContent = "マイクの権限を許可してください";
-    }
-    // Recover from non-fatal errors
-    if (event.error !== "aborted" && event.error !== "not-allowed") {
+      micLabel.classList.add("error");
+      stopRecording();
+    } else if (event.error === "no-speech") {
+      // No speech detected — this is not fatal, just continue
+      console.log("No speech detected, continuing...");
+    } else if (event.error !== "aborted") {
       stopRecording();
     }
   };
 
   rec.onend = () => {
+    console.log("Speech recognition ended, isRecording:", isRecording);
     // Auto-restart if still in recording mode (handles Chrome's ~60s cutoff)
     if (isRecording) {
+      // Save final transcript from this session before restart
+      accumulatedTranscript = finalTranscript;
       try {
         recognition = createRecognition();
         recognition.start();
       } catch (e) {
+        console.error("Failed to restart recognition:", e);
         stopRecording();
       }
     }
@@ -97,33 +131,61 @@ function createRecognition() {
 }
 
 // ========== Recording Controls ==========
-function startRecording() {
-  finalTranscript = "";
-  recognition = createRecognition();
-  recognition.start();
-  isRecording = true;
+async function toggleRecording() {
+  if (!SpeechRecognition) return;
+  if (isRecording) {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
 
-  micBtn.classList.add("recording");
-  micIcon.classList.add("hidden");
-  stopIcon.classList.remove("hidden");
-  micLabel.textContent = "録音中... タップして停止";
-  micLabel.classList.add("recording");
-  recognitionOutput.innerHTML =
-    '<span class="placeholder">聞き取り中...</span>';
+async function startRecording() {
+  // Request mic permission first
+  const hasPermission = await ensureMicPermission();
+  if (!hasPermission) return;
+
+  finalTranscript = "";
+  accumulatedTranscript = "";
+
+  try {
+    recognition = createRecognition();
+    recognition.start();
+    isRecording = true;
+
+    micBtn.classList.add("recording");
+    micIcon.classList.add("hidden");
+    stopIcon.classList.remove("hidden");
+    micLabel.textContent = "録音中... タップ or Ctrl+Shift+S で停止";
+    micLabel.classList.add("recording");
+    micLabel.classList.remove("error");
+    recognitionOutput.innerHTML =
+      '<span class="placeholder">聞き取り中...</span>';
+  } catch (err) {
+    console.error("Failed to start recognition:", err);
+    micLabel.textContent = "録音開始に失敗しました。再度お試しください。";
+    micLabel.classList.add("error");
+    isRecording = false;
+  }
 }
 
 function stopRecording() {
   isRecording = false;
   if (recognition) {
-    recognition.stop();
+    try {
+      recognition.stop();
+    } catch (e) {
+      // ignore
+    }
     recognition = null;
   }
 
   micBtn.classList.remove("recording");
   micIcon.classList.remove("hidden");
   stopIcon.classList.add("hidden");
-  micLabel.textContent = "タップして録音開始";
+  micLabel.textContent = "タップ or Ctrl+Shift+S で録音開始";
   micLabel.classList.remove("recording");
+  micLabel.classList.remove("error");
 
   // Final translation with confirmed text
   if (finalTranscript.trim()) {
@@ -131,12 +193,35 @@ function stopRecording() {
   }
 }
 
-micBtn.addEventListener("click", () => {
-  if (!SpeechRecognition) return;
-  if (isRecording) {
-    stopRecording();
-  } else {
-    startRecording();
+// ========== Click & Touch Handlers ==========
+micBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  toggleRecording();
+});
+
+// Prevent double-fire on touch devices
+micBtn.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  toggleRecording();
+});
+
+// ========== Global Keyboard Shortcut ==========
+// Ctrl+Shift+S — works regardless of focus, even in select/input
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey && event.shiftKey && event.code === "KeyS") {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleRecording();
+    return;
+  }
+
+  // Space bar fallback (only when not focused on form controls)
+  if (
+    event.code === "Space" &&
+    !["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(event.target.tagName)
+  ) {
+    event.preventDefault();
+    toggleRecording();
   }
 });
 
@@ -213,7 +298,6 @@ copyTranslationBtn.addEventListener("click", () => {
 
 // ========== Language Change Handlers ==========
 inputLangSelect.addEventListener("change", () => {
-  // If recording, restart with new language
   if (isRecording) {
     stopRecording();
     startRecording();
@@ -221,7 +305,6 @@ inputLangSelect.addEventListener("change", () => {
 });
 
 outputLangSelect.addEventListener("change", () => {
-  // Re-translate current text with new target language
   const currentText = recognitionOutput.textContent.trim();
   if (currentText && !recognitionOutput.querySelector(".placeholder")) {
     translateText(currentText);
@@ -236,15 +319,3 @@ function showPlaceholder(element, text) {
   span.textContent = text;
   element.appendChild(span);
 }
-
-// ========== Keyboard Shortcut ==========
-document.addEventListener("keydown", (event) => {
-  // Space bar to toggle recording (when not focused on input)
-  if (
-    event.code === "Space" &&
-    event.target === document.body
-  ) {
-    event.preventDefault();
-    micBtn.click();
-  }
-});
