@@ -533,6 +533,8 @@ function createRecognition() {
 
 // ========== Recording Controls ==========
 let toggleLock = false;
+let lastTouchToggleAt = 0;
+const TOUCH_CLICK_GUARD_MS = 1000;
 
 async function toggleRecording() {
   if (toggleLock) return;
@@ -827,39 +829,65 @@ function resetMicUI() {
  * Returns a resolver function that, when called with text, fills the clipboard.
  * Uses ClipboardItem with Promise<Blob> (Safari 16.4+ / Chrome 76+).
  * Falls back to a deferred copy approach for older browsers.
+ *
+ * IMPORTANT: The resolver must be called with actual non-empty text.
+ * If called with empty/whitespace-only text, the clipboard write is cancelled
+ * and NO success toast is shown. This prevents "copied!" appearing when
+ * nothing useful was actually placed on the clipboard.
  */
 function initMobileClipboardWrite() {
   // ClipboardItem with Promise<Blob>: reserve the slot synchronously,
   // fill the content asynchronously when translation completes.
   if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== "undefined") {
+    let settled = false;
     let resolver;
-    const contentPromise = new Promise((resolve) => {
+    let rejecter;
+    const contentPromise = new Promise((resolve, reject) => {
       resolver = resolve;
-      // Safety timeout: if translation takes >6s, use whatever is displayed
+      rejecter = reject;
+      // Safety timeout: if no text arrives within 8s, reject to prevent hang.
+      // Do NOT resolve with stale translationOutput text — that causes
+      // incorrect clipboard content.
       setTimeout(() => {
-        const displayed = getTextContent(translationOutput);
-        resolve(displayed || "");
-      }, 6000);
+        if (!settled) {
+          settled = true;
+          reject(new Error("clipboard timeout"));
+        }
+      }, 8000);
     });
 
     try {
       const blobPromise = contentPromise.then(
-        (text) => new Blob([text || " "], { type: "text/plain" })
+        (text) => new Blob([text], { type: "text/plain" })
       );
       const item = new ClipboardItem({ "text/plain": blobPromise });
       navigator.clipboard.write([item])
         .then(() => showToast("翻訳結果をコピーしました"))
         .catch((err) => {
-          console.warn("[clipboard] write failed:", err);
-          // Last resort: try fallbackCopy with whatever is currently displayed
-          const displayed = getTextContent(translationOutput);
-          if (displayed) {
-            fallbackCopy(displayed);
+          // Don't fallback-copy stale text — if the clipboard write failed
+          // or was cancelled (empty payload), just show failure message.
+          const msg = err && err.message;
+          if (msg === "empty clipboard payload" || msg === "clipboard timeout") {
+            // Silently skip — no toast for empty/timeout
+            console.log("[clipboard] skipped:", msg);
           } else {
+            console.warn("[clipboard] write failed:", err);
             showToast("コピーに失敗しました");
           }
         });
-      return resolver;
+
+      // Return a settle function that validates payload before resolving
+      return function settleClipboard(text) {
+        if (settled) return; // already resolved/rejected
+        settled = true;
+        if (text && text.trim()) {
+          resolver(text);
+        } else {
+          // Empty payload: reject to cancel the clipboard write.
+          // This prevents a space or empty string from being written.
+          rejecter(new Error("empty clipboard payload"));
+        }
+      };
     } catch (e) {
       console.warn("[clipboard] ClipboardItem creation failed:", e);
     }
@@ -867,16 +895,13 @@ function initMobileClipboardWrite() {
 
   // Fallback for browsers without ClipboardItem Promise support:
   // Return a deferred copy function that will be called after translation.
-  // This may fail on iOS (gesture expired) but works on some Android browsers.
+  // Strict: only copy if text is non-empty.
   return function deferredCopy(text) {
     if (text && text.trim()) {
       writeToClipboard(text);
     }
   };
 }
-
-// Keep backward compatibility alias
-const initIOSClipboardWrite = initMobileClipboardWrite;
 
 /** Release active mic stream tracks to free the microphone hardware */
 function releaseMicStream() {
@@ -887,13 +912,18 @@ function releaseMicStream() {
 }
 
 // ========== Click & Touch ==========
-micBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  toggleRecording();
-});
-
+// On mobile, touchend fires first, then a synthetic click ~300ms later.
+// We use a timestamp guard so the synthetic click is always suppressed.
 micBtn.addEventListener("touchend", (e) => {
   e.preventDefault();
+  lastTouchToggleAt = Date.now();
+  toggleRecording();
+}, { passive: false });
+
+micBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  // Suppress synthetic click that follows a touchend event
+  if (Date.now() - lastTouchToggleAt < TOUCH_CLICK_GUARD_MS) return;
   toggleRecording();
 });
 
@@ -940,11 +970,13 @@ async function translateText(text, saveToHistory, pendingCopy) {
     const span = document.createElement("span");
     span.textContent = sanitizeText(text);
     translationOutput.appendChild(span);
-    if (saveToHistory) {
+    if (saveToHistory && isValidCopyPayload(text)) {
       addHistory(text, text, inputLangSelect.value, outputLangSelect.value);
       if (autoCopyToggle.checked) {
         performAutoCopy(text, pendingCopy);
       }
+    } else if (pendingCopy) {
+      pendingCopy(""); // Cancel clipboard reservation
     }
     return;
   }
@@ -966,12 +998,14 @@ async function translateText(text, saveToHistory, pendingCopy) {
       span.textContent = translated;
       translationOutput.appendChild(span);
 
-      if (saveToHistory) {
+      if (saveToHistory && isValidCopyPayload(translated)) {
         addHistory(text, translated, inputLangSelect.value, outputLangSelect.value);
-      }
-
-      if (saveToHistory && autoCopyToggle.checked) {
-        performAutoCopy(translated, pendingCopy);
+        if (autoCopyToggle.checked) {
+          performAutoCopy(translated, pendingCopy);
+        }
+      } else {
+        // Translation succeeded but result is empty/invalid — cancel clipboard
+        if (pendingCopy) pendingCopy("");
       }
     } else {
       translationOutput.innerHTML =
@@ -988,13 +1022,30 @@ async function translateText(text, saveToHistory, pendingCopy) {
 }
 
 /**
+ * Check if text is valid for auto-copy (non-empty, non-whitespace).
+ * Single point of truth for the copy eligibility check.
+ */
+function isValidCopyPayload(text) {
+  return typeof text === "string" && text.trim().length > 0;
+}
+
+/**
  * Perform auto-copy of translated text.
  * Uses the pre-reserved clipboard slot (mobile) or direct write (desktop).
+ *
+ * IMPORTANT: This function is the ONLY place that should trigger auto-copy.
+ * It validates the payload strictly — empty/whitespace text is never copied,
+ * and the pending clipboard promise is cancelled (rejected) to prevent
+ * stale data from reaching the clipboard.
+ *
  * @param {string} text - Text to copy
- * @param {Function|null} pendingCopy - Resolver from initMobileClipboardWrite()
+ * @param {Function|null} pendingCopy - Settler from initMobileClipboardWrite()
  */
 function performAutoCopy(text, pendingCopy) {
-  if (!text || !text.trim()) {
+  if (!isValidCopyPayload(text)) {
+    // Cancel the pending clipboard reservation with empty string.
+    // The settler function will reject the promise, preventing any
+    // data (including spaces) from being written to the clipboard.
     if (pendingCopy) pendingCopy("");
     return;
   }
