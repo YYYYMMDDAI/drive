@@ -23,7 +23,10 @@ const modelLoadingBar = document.getElementById("model-loading-bar");
 const modelLoadingDetail = document.getElementById("model-loading-detail");
 
 // ========== State ==========
-let isRecording = false;
+// Recording state machine: idle → starting → recording → stopping → processing → idle
+// Prevents re-entry and race conditions during transitions.
+let recState = "idle"; // "idle" | "starting" | "recording" | "stopping" | "processing"
+let isRecording = false; // Kept in sync with recState for guard checks
 let recognition = null;
 let finalTranscript = "";
 let accumulatedTranscript = "";
@@ -31,6 +34,23 @@ let lastInterimText = ""; // Track interim text as fallback for mobile
 let translateTimer = null;
 let micPermissionGranted = false;
 let activeMicStream = null; // Track active mic stream for clean release
+let sessionCounter = 0; // Monotonic session counter for logging
+
+function setRecState(newState) {
+  const old = recState;
+  recState = newState;
+  isRecording = (newState === "recording");
+  slog("state", `${old} → ${newState}`);
+}
+
+// ========== Session Logging ==========
+function sessionId() {
+  return `S${sessionCounter}`;
+}
+
+function slog(tag, ...args) {
+  console.log(`[${sessionId()}][${tag}]`, ...args);
+}
 
 // ========== Platform / OS Detection ==========
 const ua = navigator.userAgent;
@@ -420,19 +440,17 @@ function createRecognition() {
   rec.maxAlternatives = 1;
 
   rec.onstart = () => {
-    console.log("[recognition] started");
+    slog("recognition", "started");
     restartAttempts = 0; // reset on successful start
   };
 
   rec.onaudiostart = () => {
-    console.log("[recognition] audio started — mic is active");
+    slog("recognition", "audio started — mic is active");
   };
 
   rec.onresult = (event) => {
     // Guard: ignore results after recording has stopped.
-    // recognition.abort()/stop() can cause late onresult events
-    // that would overwrite the display set up by stopWebSpeechRecording().
-    if (!isRecording) return;
+    if (recState !== "recording") return;
 
     let interim = "";
     let sessionFinal = "";
@@ -471,45 +489,46 @@ function createRecognition() {
   };
 
   rec.onerror = (event) => {
-    console.error("[recognition] error:", event.error);
+    slog("recognition", "error:", event.error);
     if (event.error === "not-allowed") {
       micLabel.textContent = "マイクの権限を許可してください";
       micLabel.classList.add("error");
-      stopRecording();
+      if (recState === "recording") stopRecording();
+      else { setRecState("idle"); resetMicUI(); }
     } else if (event.error === "no-speech") {
-      // Not fatal — will restart via onend if still recording
-      console.log("[recognition] no speech detected");
+      slog("recognition", "no speech detected — will retry via onend");
     } else if (event.error === "network") {
-      // iOS PWA sometimes throws network errors; retry
-      console.log("[recognition] network error — will retry");
+      slog("recognition", "network error — will retry via onend");
     } else if (event.error === "audio-capture") {
-      // Mic might be temporarily unavailable on iOS
-      console.log("[recognition] audio-capture error — will retry");
+      slog("recognition", "audio-capture error — will retry via onend");
     } else if (event.error !== "aborted") {
-      stopRecording();
+      if (recState === "recording") stopRecording();
+      else { setRecState("idle"); resetMicUI(); }
     }
   };
 
   rec.onend = () => {
-    console.log("[recognition] ended, isRecording:", isRecording);
-    if (!isRecording) return;
+    slog("recognition", `ended, recState=${recState}`);
+    if (recState !== "recording") return;
 
     accumulatedTranscript = finalTranscript;
     restartAttempts++;
 
     if (restartAttempts > MAX_RESTART_ATTEMPTS) {
-      console.warn("[recognition] max restart attempts reached");
+      slog("recognition", "max restart attempts reached");
       // On iOS PWA: Web Speech API silently fails. Switch to Whisper as fallback.
       if (isIOS && isPWAStandalone && !useWhisperSTT) {
-        console.log("[recognition] switching to Whisper fallback for iOS PWA");
+        slog("recognition", "switching to Whisper fallback for iOS PWA");
         useWhisperSTT = true;
-        isRecording = false;
+        setRecState("idle");
         recognition = null;
         resetMicUI();
         micLabel.textContent = "音声認識を切替中... もう一度タップしてください";
         return;
       }
-      stopRecording();
+      setRecState("idle");
+      recognition = null;
+      resetMicUI();
       micLabel.textContent = "接続が切れました。再度タップしてください。";
       return;
     }
@@ -517,13 +536,16 @@ function createRecognition() {
     // iOS needs a delay before restarting — without it, start() silently fails
     const delay = isIOS ? Math.min(restartDelay * restartAttempts, 2000) : 100;
     setTimeout(() => {
-      if (!isRecording) return; // might have been stopped during delay
+      if (recState !== "recording") return; // might have been stopped during delay
       try {
         recognition = createRecognition();
         recognition.start();
+        slog("recognition", `restarted (attempt ${restartAttempts})`);
       } catch (e) {
-        console.error("[recognition] failed to restart:", e);
-        stopRecording();
+        slog("recognition", "failed to restart:", e.message);
+        setRecState("idle");
+        resetMicUI();
+        micLabel.textContent = "接続が切れました。再度タップしてください。";
       }
     }, delay);
   };
@@ -532,29 +554,38 @@ function createRecognition() {
 }
 
 // ========== Recording Controls ==========
-let toggleLock = false;
 let lastTouchToggleAt = 0;
 const TOUCH_CLICK_GUARD_MS = 1000;
 
 async function toggleRecording() {
-  if (toggleLock) return;
-
-  toggleLock = true;
-  setTimeout(() => { toggleLock = false; }, 400);
-
-  if (isRecording) {
+  // State machine guard: only allow transitions from idle or recording
+  if (recState === "recording") {
     stopRecording();
-  } else {
+  } else if (recState === "idle") {
     await startRecording();
+  } else {
+    slog("toggle", `blocked — state is ${recState}`);
   }
 }
 
 async function startRecording() {
-  const hasPermission = await ensureMicPermission();
-  if (!hasPermission) return;
+  if (recState !== "idle") {
+    slog("start", `blocked — state is ${recState}`);
+    return;
+  }
 
-  // Release any leftover mic stream from previous session
-  releaseMicStream();
+  sessionCounter++;
+  setRecState("starting");
+  slog("start", "begin");
+
+  const hasPermission = await ensureMicPermission();
+  if (!hasPermission) {
+    setRecState("idle");
+    return;
+  }
+
+  // Full cleanup before each session — ensures 2nd+ recordings start clean
+  fullCleanup();
 
   if (useWhisperSTT) {
     await startWhisperRecording();
@@ -564,31 +595,88 @@ async function startRecording() {
 }
 
 /**
- * Start recording using Web Speech API (default path for browsers with support).
+ * Full cleanup of all recording resources.
+ * Called before each new recording session and on visibility recovery.
+ * Guarantees a clean slate regardless of previous state.
  */
-async function startWebSpeechRecording() {
-  // iOS: forcefully re-acquire mic stream before each session.
-  // Without this, 2nd+ recordings silently fail because iOS WebKit
-  // releases the audio session after the previous recognition ends.
-  if (isIOS) {
-    try {
-      activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      console.warn("[iOS] mic re-acquire failed:", e);
-    }
-    // Small delay to let iOS init audio session
-    await new Promise((r) => setTimeout(r, 300));
+function fullCleanup() {
+  slog("cleanup", "full resource cleanup");
+
+  // Cancel pending translation timer
+  clearTimeout(translateTimer);
+  translateTimer = null;
+
+  // Detach and abort WebSpeech recognition
+  if (recognition) {
+    recognition.onresult = null;
+    recognition.onend = null;
+    recognition.onerror = null;
+    recognition.onstart = null;
+    recognition.onaudiostart = null;
+    try { recognition.abort(); } catch (e) { /* ignore */ }
+    recognition = null;
   }
 
+  // Stop Whisper VAD
+  if (whisperVAD) {
+    whisperVAD.stop();
+    whisperVAD = null;
+  }
+  hideVADIndicator();
+
+  // Stop MediaRecorder
+  if (whisperMediaRecorder && whisperMediaRecorder.state !== "inactive") {
+    try { whisperMediaRecorder.stop(); } catch (e) { /* ignore */ }
+  }
+  whisperMediaRecorder = null;
+  whisperAudioChunks = [];
+
+  // Release mic stream
+  releaseMicStream();
+
+  // Reset transcript state
   finalTranscript = "";
   accumulatedTranscript = "";
   lastInterimText = "";
   restartAttempts = 0;
+}
+
+/**
+ * Start recording using Web Speech API (default path for browsers with support).
+ * iOS: re-acquires mic stream before each session to prevent 2nd+ silent failures.
+ */
+async function startWebSpeechRecording() {
+  slog("webSpeech", "startWebSpeechRecording");
+
+  // iOS: forcefully re-acquire mic stream before each session.
+  // Without this, 2nd+ recordings silently fail because iOS WebKit
+  // releases the audio session after the previous recognition ends.
+  if (isIOS || (isMobile && isPWAStandalone)) {
+    try {
+      activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      slog("webSpeech", "mic stream acquired OK");
+    } catch (e) {
+      slog("webSpeech", "mic re-acquire failed:", e.message);
+      micLabel.textContent = "マイクの取得に失敗しました。再度お試しください。";
+      micLabel.classList.add("error");
+      setRecState("idle");
+      return;
+    }
+    // Small delay to let iOS init audio session
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Re-check state — user might have tapped stop during the delay
+    if (recState !== "starting") {
+      slog("webSpeech", "state changed during mic init, aborting");
+      releaseMicStream();
+      return;
+    }
+  }
 
   try {
     recognition = createRecognition();
     recognition.start();
-    isRecording = true;
+    setRecState("recording");
 
     micBtn.classList.add("recording");
     micIcon.classList.add("hidden");
@@ -599,10 +687,10 @@ async function startWebSpeechRecording() {
     recognitionOutput.innerHTML =
       '<span class="placeholder">聞き取り中...</span>';
   } catch (err) {
-    console.error("[recognition] failed to start:", err);
+    slog("webSpeech", "failed to start:", err.message);
     micLabel.textContent = "録音開始に失敗しました。再度お試しください。";
     micLabel.classList.add("error");
-    isRecording = false;
+    setRecState("idle");
   }
 }
 
@@ -611,22 +699,29 @@ async function startWebSpeechRecording() {
  * Captures audio via MediaRecorder and uses VAD for UX.
  */
 async function startWhisperRecording() {
+  slog("whisper", "startWhisperRecording");
+
   try {
     activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    slog("whisper", "mic stream acquired OK");
   } catch (e) {
-    console.error("[whisper] mic acquisition failed:", e);
+    slog("whisper", "mic acquisition failed:", e.message);
     micLabel.textContent = "マイクの権限を許可してください";
     micLabel.classList.add("error");
+    setRecState("idle");
     return;
   }
 
   // Small delay for iOS audio session initialization
   if (isIOS) {
     await new Promise((r) => setTimeout(r, 300));
+    if (recState !== "starting") {
+      slog("whisper", "state changed during mic init, aborting");
+      releaseMicStream();
+      return;
+    }
   }
 
-  finalTranscript = "";
-  accumulatedTranscript = "";
   whisperAudioChunks = [];
 
   // Determine supported MIME type
@@ -648,7 +743,7 @@ async function startWhisperRecording() {
   };
 
   whisperMediaRecorder.start(1000); // collect chunks every second
-  isRecording = true;
+  setRecState("recording");
 
   // Start VAD for visual feedback and auto-stop
   whisperVAD = createVAD(activeMicStream, {
@@ -662,7 +757,7 @@ async function startWhisperRecording() {
       console.log("[VAD] speech ended (silence detected)");
       micBtn.classList.remove("vad-active");
       // Auto-stop after silence only if speech was detected
-      if (isRecording && whisperVAD && whisperVAD.speechDetected) {
+      if (recState === "recording" && whisperVAD && whisperVAD.speechDetected) {
         stopRecording();
       }
     },
@@ -681,10 +776,14 @@ async function startWhisperRecording() {
 }
 
 function stopRecording() {
-  const wasRecording = isRecording;
-  isRecording = false;
+  if (recState !== "recording") {
+    slog("stop", `blocked — state is ${recState}`);
+    return;
+  }
 
-  if (useWhisperSTT && wasRecording) {
+  setRecState("stopping");
+
+  if (useWhisperSTT) {
     stopWhisperRecording();
   } else {
     stopWebSpeechRecording();
@@ -692,26 +791,23 @@ function stopRecording() {
 }
 
 function stopWebSpeechRecording() {
-  // 1. Cancel any pending scheduled translation from interim results.
-  //    Without this, a stale scheduleTranslation() timer could fire AFTER
-  //    we start the final translation, causing double translation + display flicker.
+  slog("stopWeb", "stopping WebSpeech recognition");
+
+  // 1. Cancel pending scheduled translations
   clearTimeout(translateTimer);
 
   // 2. Collect the best available text BEFORE stopping recognition.
-  //    On mobile (non-continuous mode), interim results may not have been
-  //    finalized yet. We capture the displayed text as a robust fallback.
   let bestText = finalTranscript.trim();
   if (!bestText && lastInterimText) {
     bestText = lastInterimText.trim();
   }
   if (!bestText) {
-    // Last resort: grab whatever text is currently shown in the output
     bestText = getTextContent(recognitionOutput);
   }
+  slog("stopWeb", `bestText="${bestText ? bestText.substring(0, 30) : "(empty)"}"`);
 
   // 3. Detach ALL event handlers BEFORE aborting to prevent post-abort
   //    onresult/onend from overwriting the display or re-triggering translation.
-  //    This is critical: abort()/stop() can cause late events to fire.
   if (recognition) {
     recognition.onresult = null;
     recognition.onend = null;
@@ -721,9 +817,7 @@ function stopWebSpeechRecording() {
     try { recognition.abort(); } catch (e) { /* ignore */ }
     recognition = null;
   }
-  // Explicitly release mic stream so iOS stops showing the mic indicator
   releaseMicStream();
-
   resetMicUI();
 
   if (bestText) {
@@ -734,17 +828,21 @@ function stopWebSpeechRecording() {
     span.textContent = sanitizeText(bestText);
     recognitionOutput.appendChild(span);
 
-    // Mobile (all platforms): reserve clipboard slot NOW in gesture context.
-    // On iOS, clipboard.write() must be called synchronously in gesture.
-    // On Android, clipboard.writeText() may also expire after async delay.
+    setRecState("processing");
+
+    // Mobile: reserve clipboard slot NOW in gesture context.
     let pendingCopy = null;
     if (isMobile && autoCopyToggle.checked) {
       pendingCopy = initMobileClipboardWrite();
+      slog("stopWeb", "pendingCopy created");
     }
 
-    translateText(bestText, true, pendingCopy);
+    translateText(bestText, true, pendingCopy).then(() => {
+      setRecState("idle");
+    });
   } else {
     showPlaceholder(recognitionOutput, "音声を認識できませんでした。もう一度お試しください。");
+    setRecState("idle");
   }
 }
 
@@ -752,6 +850,8 @@ function stopWebSpeechRecording() {
  * Stop Whisper recording, process audio, and display results.
  */
 function stopWhisperRecording() {
+  slog("stopWhisper", "stopping Whisper recording");
+
   // Stop VAD
   if (whisperVAD) {
     whisperVAD.stop();
@@ -763,14 +863,19 @@ function stopWhisperRecording() {
   let pendingCopy = null;
   if (isMobile && autoCopyToggle.checked) {
     pendingCopy = initMobileClipboardWrite();
+    slog("stopWhisper", "pendingCopy created");
   }
 
   resetMicUI();
 
   if (!whisperMediaRecorder || whisperMediaRecorder.state === "inactive") {
     releaseMicStream();
+    if (pendingCopy) pendingCopy(""); // Cancel — no audio
+    setRecState("idle");
     return;
   }
+
+  setRecState("processing");
 
   // Stop MediaRecorder and process audio
   whisperMediaRecorder.onstop = async () => {
@@ -779,6 +884,7 @@ function stopWhisperRecording() {
     if (whisperAudioChunks.length === 0) {
       showPlaceholder(recognitionOutput, "音声が検出されませんでした");
       if (pendingCopy) pendingCopy("");
+      setRecState("idle");
       return;
     }
 
@@ -793,16 +899,19 @@ function stopWhisperRecording() {
 
     if (text && text.trim()) {
       finalTranscript = text.trim();
+      slog("stopWhisper", `transcribed="${finalTranscript.substring(0, 30)}"`);
       recognitionOutput.innerHTML = "";
       const span = document.createElement("span");
       span.textContent = sanitizeText(finalTranscript);
       recognitionOutput.appendChild(span);
 
-      translateText(finalTranscript, true, pendingCopy);
+      await translateText(finalTranscript, true, pendingCopy);
     } else {
+      slog("stopWhisper", "transcription empty");
       showPlaceholder(recognitionOutput, "音声を認識できませんでした。もう一度お試しください。");
       if (pendingCopy) pendingCopy("");
     }
+    setRecState("idle");
   };
 
   whisperMediaRecorder.stop();
@@ -878,13 +987,16 @@ function initMobileClipboardWrite() {
 
       // Return a settle function that validates payload before resolving
       return function settleClipboard(text) {
-        if (settled) return; // already resolved/rejected
+        if (settled) {
+          slog("clipboard", "settleClipboard called but already settled");
+          return;
+        }
         settled = true;
         if (text && text.trim()) {
+          slog("clipboard", `resolved with ${text.length} chars`);
           resolver(text);
         } else {
-          // Empty payload: reject to cancel the clipboard write.
-          // This prevents a space or empty string from being written.
+          slog("clipboard", "rejected — empty payload");
           rejecter(new Error("empty clipboard payload"));
         }
       };
@@ -946,8 +1058,7 @@ function scheduleTranslation(text) {
   clearTimeout(translateTimer);
   if (!text.trim()) return;
   // Only schedule live translation preview while actively recording.
-  // After recording stops, translation is handled by stopWebSpeechRecording().
-  if (!isRecording) return;
+  if (recState !== "recording") return;
   translateTimer = setTimeout(() => translateText(text, false), 500);
 }
 
@@ -1043,18 +1154,20 @@ function isValidCopyPayload(text) {
  */
 function performAutoCopy(text, pendingCopy) {
   if (!isValidCopyPayload(text)) {
-    // Cancel the pending clipboard reservation with empty string.
-    // The settler function will reject the promise, preventing any
-    // data (including spaces) from being written to the clipboard.
+    slog("autoCopy", `rejected — invalid payload: "${text ? text.substring(0, 20) : "(null)"}"`);
     if (pendingCopy) pendingCopy("");
     return;
   }
 
+  slog("autoCopy", `copying ${text.length} chars: "${text.substring(0, 30)}"`);
+
   if (pendingCopy) {
     // Mobile: resolve the pre-reserved clipboard slot with translated text
+    slog("autoCopy", "resolving pendingCopy");
     pendingCopy(text);
   } else {
     // Desktop: clipboard.writeText works fine outside gesture context
+    slog("autoCopy", "direct writeToClipboard");
     writeToClipboard(text);
   }
 }
@@ -1262,57 +1375,51 @@ setInterval(() => {
 
 // ========== iOS PWA: Recover from app switch ==========
 // When user switches to another app and comes back, iOS kills the audio session
-// and SpeechRecognition silently dies. We detect this via visibilitychange and
-// cleanly stop + show a "tap to restart" message so the user knows to tap again.
-// We also re-acquire the mic proactively so the next tap works immediately.
+// and SpeechRecognition silently dies. We use fullCleanup() to guarantee a
+// clean slate, then re-acquire mic so the next tap works immediately.
 document.addEventListener("visibilitychange", () => {
+  slog("visibility", document.visibilityState, `recState=${recState}`);
+
   if (document.visibilityState === "visible") {
-    if (isRecording) {
-      // Recognition is likely dead after iOS background — stop cleanly
-      console.log("[visibility] page became visible while recording — resetting");
-      isRecording = false;
-
-      if (recognition) {
-        recognition.onresult = null;
-        recognition.onend = null;
-        recognition.onerror = null;
-        try { recognition.abort(); } catch (e) { /* ignore */ }
-        recognition = null;
-      }
-      if (whisperVAD) {
-        whisperVAD.stop();
-        whisperVAD = null;
-      }
-      hideVADIndicator();
-      if (whisperMediaRecorder && whisperMediaRecorder.state !== "inactive") {
-        try { whisperMediaRecorder.stop(); } catch (e) { /* ignore */ }
-      }
-
-      releaseMicStream();
+    // ALWAYS do a full cleanup on return from background on mobile PWA.
+    // iOS kills audio sessions when backgrounded. Even if we weren't
+    // "recording" (e.g., state was "processing" or "stopping"),
+    // the audio resources are dead and must be re-initialized.
+    if (recState !== "idle") {
+      slog("visibility", "returning from background — full cleanup");
+      fullCleanup();
       resetMicUI();
+      setRecState("idle");
       micLabel.textContent = "アプリに戻りました。タップして再開";
     }
 
     // Proactively re-acquire mic so next recording starts smoothly
-    if (isIOS) {
+    if (isIOS || (isMobile && isPWAStandalone)) {
       navigator.mediaDevices.getUserMedia({ audio: true })
-        .then((stream) => stream.getTracks().forEach((t) => t.stop()))
-        .catch(() => {});
+        .then((stream) => {
+          stream.getTracks().forEach((t) => t.stop());
+          slog("visibility", "mic re-acquisition OK");
+        })
+        .catch((e) => {
+          slog("visibility", "mic re-acquisition failed:", e.message);
+        });
     }
   } else {
-    // Going to background — stop recording to release resources
-    if (isRecording) {
-      console.log("[visibility] page hidden while recording — stopping");
-      stopRecording();
+    // Going to background — full cleanup to release resources
+    if (recState !== "idle") {
+      slog("visibility", "going to background — full cleanup");
+      fullCleanup();
+      resetMicUI();
+      setRecState("idle");
     }
   }
 });
 
 // ========== Language Change Handlers ==========
 inputLangSelect.addEventListener("change", () => {
-  if (isRecording) {
+  if (recState === "recording") {
     stopRecording();
-    startRecording();
+    // startRecording will be called by user tapping mic again
   }
 });
 
@@ -1349,3 +1456,5 @@ window.renderHistory = renderHistory;
 window.toggleRecording = toggleRecording;
 window.useWhisperSTT = useWhisperSTT;
 window.sanitizeText = sanitizeText;
+window.getRecState = () => recState;
+window.getSessionId = sessionId;
