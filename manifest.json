@@ -6,8 +6,8 @@
   "scope": "./",
   "id": "voice-input-app",
   "display": "standalone",
-  "background_color": "#0f0f14",
-  "theme_color": "#6c5ce7",
+  "background_color": "#111113",
+  "theme_color": "#4a8eff",
   "orientation": "any",
   "categories": ["utilities", "productivity"],
   "icons": [
