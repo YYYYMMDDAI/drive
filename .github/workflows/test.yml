@@ -1,0 +1,98 @@
+name: iOS Tests
+
+on:
+  push:
+    branches: ['*']
+    paths:
+      - 'SplitEase/**'
+  pull_request:
+    paths:
+      - 'SplitEase/**'
+  workflow_dispatch:
+
+jobs:
+  unit_tests:
+    name: Unit Tests
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_17.0.app/Contents/Developer
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-test-${{ hashFiles('SplitEase/**/*.swift') }}
+          restore-keys: ${{ runner.os }}-test-
+
+      - name: Run Unit Tests
+        run: |
+          xcodebuild test \
+            -project SplitEase/SplitEase.xcodeproj \
+            -scheme SplitEase \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -only-testing:SplitEaseTests \
+            -resultBundlePath TestResults/unit.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcpretty --color
+
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: TestResults/unit.xcresult
+          retention-days: 7
+
+  ui_tests:
+    name: E2E UI Tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    needs: unit_tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_17.0.app/Contents/Developer
+
+      - name: Boot Simulator
+        run: |
+          xcrun simctl boot "iPhone 16" 2>/dev/null || true
+          xcrun simctl status_bar "iPhone 16" override \
+            --time "9:41" --batteryState charged --batteryLevel 100
+
+      - name: Run E2E UI Tests
+        run: |
+          xcodebuild test \
+            -project SplitEase/SplitEase.xcodeproj \
+            -scheme SplitEase \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -only-testing:SplitEaseUITests \
+            -resultBundlePath TestResults/ui.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcpretty --color
+
+      - name: Upload UI Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
+          path: TestResults/ui.xcresult
+          retention-days: 7
+
+      - name: Upload Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshots
+          path: TestResults/ui.xcresult/Attachments
+          retention-days: 7

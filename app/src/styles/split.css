@@ -1,0 +1,150 @@
+/* ===== 画面分割スタイル ===== */
+
+/* コンテナ */
+.split-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-primary);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 分割パネル */
+.split-panel {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+/* iframe */
+.panel-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* 空パネル */
+.panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* URL入力 */
+.url-input {
+  width: 100%;
+  max-width: 300px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.url-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* 開くボタン */
+.open-btn {
+  min-width: 80px;
+  height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.open-btn:active {
+  opacity: 0.7;
+}
+
+/* 閉じるボタン */
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background 0.2s;
+}
+
+.close-btn:active {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* 分割バー */
+.split-divider {
+  flex-shrink: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.split-divider.active {
+  background: rgba(0, 122, 255, 0.1);
+}
+
+/* 分割バーのハンドル */
+.divider-handle {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text-tertiary);
+  transition: background 0.2s, width 0.2s;
+}
+
+.split-divider:hover .divider-handle,
+.split-divider.active .divider-handle {
+  width: 60px;
+  background: var(--accent);
+}
+
+/* タッチデバイス向け最適化 */
+@media (hover: none) {
+  .split-divider {
+    height: 32px;
+  }
+
+  .divider-handle {
+    width: 50px;
+    height: 6px;
+  }
+}

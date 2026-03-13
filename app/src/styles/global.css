@@ -1,0 +1,125 @@
+/* ===== グローバルスタイル ===== */
+/* iPhone 13-17 / iOS PWA 対応 */
+
+/* リセット */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  font-size: 16px;
+
+  /* Safe Area対応 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+
+  /* タッチ最適化 */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* カラーテーマ（ダークモード自動対応） */
+:root {
+  color-scheme: light dark;
+
+  /* ライトモード */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f2f2f7;
+  --bg-tertiary: #e5e5ea;
+  --text-primary: #000000;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #aeaeb2;
+  --accent: #007aff;
+  --accent-light: rgba(0, 122, 255, 0.1);
+  --border: rgba(0, 0, 0, 0.1);
+  --success: #34c759;
+  --warning: #ff9500;
+  --error: #ff3b30;
+  --shadow: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #000000;
+    --bg-secondary: #1c1c1e;
+    --bg-tertiary: #2c2c2e;
+    --text-primary: #ffffff;
+    --text-secondary: #8e8e93;
+    --text-tertiary: #636366;
+    --accent: #0a84ff;
+    --accent-light: rgba(10, 132, 255, 0.15);
+    --border: rgba(255, 255, 255, 0.1);
+    --success: #30d158;
+    --warning: #ff9f0a;
+    --error: #ff453a;
+    --shadow: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* フォーカス */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* スクロールバー（WebKit） */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border-radius: 3px;
+}
+
+/* テキスト選択可能な領域 */
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* アニメーション */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* ユーティリティ */
+.fade-in {
+  animation: fadeIn 0.2s ease;
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease;
+}
